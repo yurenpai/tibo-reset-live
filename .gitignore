@@ -1,0 +1,10 @@
+node_modules/
+data/
+.env
+.env.*
+!.env.example
+*.zip
+*.log
+/.claude/
+/.codex/
+/*.png

@@ -1,0 +1,149 @@
+{
+  "checkedAt": "2026-10-23T07:30:00Z",
+  "sourceMethod": "Tibo X 原帖通过 FxTwitter 公共镜像核对；仅用于初始历史回填，不作为实时连接。",
+  "events": [
+    {
+      "id": "2107676072871600470",
+      "at": "2026-10-07T03:35:09Z",
+      "kind": "confirmed",
+      "title": "Day 2 · 已确认重置",
+      "note": "确认帖：北京时间 10月7日 11:35。",
+      "url": "https://x.com/thsottiaux/status/2107676072871600470",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2108040921044639779",
+      "at": "2026-10-08T03:44:55Z",
+      "kind": "banked",
+      "title": "Day 3 · 重置卡已发放",
+      "note": "到账确认帖：北京时间 10月8日 11:44。发卡不等同于自动重置。",
+      "url": "https://x.com/thsottiaux/status/2108040921044639779",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2109132167112782291",
+      "at": "2026-10-11T04:01:09Z",
+      "kind": "confirmed",
+      "title": "Day 6 · 已确认重置",
+      "note": "确认帖：北京时间 10月11日 12:01。",
+      "url": "https://x.com/thsottiaux/status/2109132167112782291",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2109873287853707513",
+      "at": "2026-10-13T05:06:06Z",
+      "kind": "confirmed",
+      "title": "Day 8 · 已确认重置",
+      "note": "确认帖：北京时间 10月13日 13:06。",
+      "url": "https://x.com/thsottiaux/status/2109873287853707513",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2110618732666257557",
+      "at": "2026-10-15T06:28:13Z",
+      "kind": "confirmed",
+      "title": "Day 10 · 已确认重置",
+      "note": "确认帖：北京时间 10月15日 14:28。",
+      "url": "https://x.com/thsottiaux/status/2110618732666257557",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2111566005684289735",
+      "at": "2026-10-17T21:12:21Z",
+      "kind": "confirmed",
+      "title": "Day 13 · 已确认重置",
+      "note": "确认帖：北京时间 10月18日 05:12。与当日预告的关联经过社区追踪交叉核对。",
+      "url": "https://x.com/thsottiaux/status/2111566005684289735",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2112432076767289678",
+      "at": "2026-10-20T06:33:48Z",
+      "kind": "confirmed",
+      "title": "Day 15 · 已宣布重置",
+      "note": "公告时间：北京时间 10月20日 14:33。",
+      "url": "https://x.com/thsottiaux/status/2112432076767289678",
+      "topic": "reset",
+      "evidence": "official",
+      "status": "confirmed"
+    },
+    {
+      "id": "2113162277688070445",
+      "at": "2026-10-22T06:55:22Z",
+      "kind": "scheduled",
+      "title": "Day 17 · 重置预告",
+      "note": "Tibo 主帖宣布 reset day，随后由他本人回复：次日太平洋时间上午 10 点前落地。",
+      "url": "https://x.com/thsottiaux/status/2113162277688070445",
+      "sourceType": "post",
+      "windowStart": "2026-10-22T07:00:00.000Z",
+      "windowEnd": "2026-10-22T17:00:00.000Z",
+      "literalEnd": "2026-10-22T18:00:00.000Z",
+      "timeZone": "America/Los_Angeles",
+      "timeNote": "推算观察窗口为北京时间 10月22日 15:00 至 10月23日 01:00。Tibo 写 PST，但当地当时实际为 PDT；若严格按 PST 字面，截止为 02:00。",
+      "followUps": [
+        {
+          "id": "2113162413008884099",
+          "at": "2026-10-22T06:55:54Z",
+          "url": "https://x.com/thsottiaux/status/2113162413008884099",
+          "excerpt": "Lands tomorrow before 10am PST.",
+          "sourceType": "reply"
+        }
+      ],
+      "topic": "reset",
+      "evidence": "announcement",
+      "status": "planned"
+    },
+    {
+      "id": "observed-day17-20261022T171000Z",
+      "at": "2026-10-22T17:10:00Z",
+      "kind": "observed",
+      "title": "Day 17 · 社区观测已重置",
+      "note": "北京时间 10月23日 01:10，公共追踪记录观测到全局额度重置。它证明重置已发生，但不是 Tibo 的完成确认帖，时间也是观测时刻而非精确生效秒数。",
+      "url": "https://resetradar.wiki/en/",
+      "scope": "Codex 用户",
+      "sourceType": "community",
+      "announcementSource": "https://x.com/thsottiaux/status/2113162277688070445",
+      "topic": "reset",
+      "evidence": "community",
+      "status": "observed"
+    },
+    {
+      "id": "2113492187770175603",
+      "at": "2026-10-23T04:46:19Z",
+      "kind": "scheduled",
+      "title": "Day 18 · 重置已预告",
+      "note": "主帖说这是一次重置，Tibo 随后回复次日太平洋时间上午 10 点前落地；因此先记为预告，不把发帖时刻当成到账时刻。",
+      "url": "https://x.com/thsottiaux/status/2113492187770175603",
+      "sourceType": "post",
+      "windowStart": "2026-10-23T07:00:00.000Z",
+      "windowEnd": "2026-10-23T17:00:00.000Z",
+      "literalEnd": "2026-10-23T18:00:00.000Z",
+      "timeZone": "America/Los_Angeles",
+      "timeNote": "推算观察窗口为北京时间 10月23日 15:00 至 10月24日 01:00。Tibo 写 PST，但当地当时实际为 PDT；若严格按 PST 字面，截止为 02:00。",
+      "followUps": [
+        {
+          "id": "2113492502355562875",
+          "at": "2026-10-23T04:47:34Z",
+          "url": "https://x.com/thsottiaux/status/2113492502355562875",
+          "excerpt": "Landing tomorrow before 10am PST together with a small ship.",
+          "sourceType": "reply"
+        }
+      ],
+      "topic": "reset",
+      "evidence": "announcement",
+      "status": "planned"
+    }
+  ]
+}

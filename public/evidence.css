@@ -1,0 +1,14 @@
+.observed{color:#167b83}
+.badge.observed{background:#d9f0f0}
+.time-window{display:grid;gap:5px;margin:12px 0;padding:11px 12px;border-radius:9px;background:#f4f1e7;border:1px solid #eadfbd}
+.time-window span{font-size:11px;color:#8d6a22;letter-spacing:.08em}
+.time-window strong{font-size:13px;color:#725417}
+.time-window small{font-size:11px;line-height:1.65;color:#7c7461}
+.time-window .countdown{color:#956f21;font-weight:650}
+.celebrating .time-window,.celebrating .time-window{background:#fbf1d7;border-color:#e0c68b}
+.scope{font-size:11px!important;color:#8a7c62!important}
+.follow-ups{margin:10px 0 4px;padding:10px 12px;border-left:3px solid #dcd2bd;background:#faf8f2;border-radius:0 8px 8px 0}
+.follow-ups span{display:block;font-size:10px;letter-spacing:.08em;color:#94886f;margin-bottom:6px}
+.follow-ups p{margin:0 0 4px;font-size:12px!important;line-height:1.6;color:#6d6350}
+.follow-ups p:last-child{margin-bottom:0}
+.follow-ups a{font-size:12px}

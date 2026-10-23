@@ -1,0 +1,11 @@
+services:
+  calendar:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8788:8788"
+    volumes:
+      - calendar-data:/app/data
+volumes:
+  calendar-data:

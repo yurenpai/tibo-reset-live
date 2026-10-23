@@ -1,0 +1,205 @@
+{
+  "plan": {
+    "start": "2026-10-05",
+    "days": 28,
+    "timeZone": "America/Los_Angeles",
+    "announcementId": "2106845241357824205",
+    "announcementAt": "2026-10-04T20:33:43.000Z",
+    "announcementUrl": "https://x.com/thsottiaux/status/2106845241357824205",
+    "announcementExcerpt": "Over the next 28 days, each day we’ll either ship one thing that is a clear improvement and relevant for most codex/work users or ship a full reset. Let the improvements begin."
+  },
+  "checkedAt": "2026-10-23T09:00:00Z",
+  "sourceMethod": "每一日都绑定 Tibo 本人原帖；帖子时间取自公开镜像，按太平洋时区归日。未找到原帖的日子不填内容，显示为待观察。",
+  "entries": [
+    {
+      "day": 1,
+      "date": "2026-10-05",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "默认速度提升约 50%",
+      "summary": "GPT-6 Astra 与 GPT-6.1 Sol 通过订阅使用时默认速度提升约 50%，覆盖全部产品与合作方。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2107158998495748264",
+      "sourceAt": "2026-10-05T17:20:29.000Z"
+    },
+    {
+      "day": 2,
+      "date": "2026-10-06",
+      "plannedType": "feature_reset",
+      "status": "reported",
+      "title": "当日四项改进",
+      "summary": "2.1 自动审核免费且不消耗额度；2.2 简化 API；2.3 会议纪要集成；2.4 Decisions API 上线。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2107575657014468879",
+      "sourceAt": "2026-10-06T20:56:08.000Z",
+      "resetStatus": "confirmed"
+    },
+    {
+      "day": 3,
+      "date": "2026-10-07",
+      "plannedType": "feature_reset",
+      "status": "reported",
+      "title": "Chat 里的 GPT-6 + 重置卡",
+      "summary": "Chat 中上线 GPT-6，同时宣布 Codex 与 ChatGPT Work 活跃用户达 4000 万，并向所有付费账户发放一张重置卡。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2107913674593644711",
+      "sourceAt": "2026-10-07T19:19:17.000Z",
+      "resetStatus": "reported",
+      "resetKind": "banked"
+    },
+    {
+      "day": 4,
+      "date": "2026-10-08",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "即时纠偏 + GPT-6.1 Sol ultrafast",
+      "summary": "模型对中途调整的反应变为即时，可实时改变方向而不浪费已用算力；同时发布 GPT-6.1 Sol ultrafast。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2108275041276420573",
+      "sourceAt": "2026-10-08T19:15:14.000Z"
+    },
+    {
+      "day": 5,
+      "date": "2026-10-09",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "桌面端输入预测",
+      "summary": "桌面应用加入 Composer 输入预测，Pro 套餐包含且不额外消耗额度；同日在移动端支持创建并发送 dot。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2108645667451318747",
+      "sourceAt": "2026-10-09T19:47:58.000Z"
+    },
+    {
+      "day": 6,
+      "date": "2026-10-10",
+      "plannedType": "reset",
+      "status": "confirmed",
+      "title": "用量重置",
+      "summary": "Tibo 当日直接发布重置；随后在太平洋时间当晚确认已全部下发完成。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2109045220411351517",
+      "sourceAt": "2026-10-10T22:15:39.000Z",
+      "resetStatus": "confirmed"
+    },
+    {
+      "day": 7,
+      "date": "2026-10-11",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "默认上下文提升到 500K",
+      "summary": "GPT-6.1 Sol 在 Codex 与 Work 中的默认上下文从 272K 提升到 500K，约 80% 增幅，可配置到 1M。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2109430343346581527",
+      "sourceAt": "2026-10-11T23:45:59.000Z"
+    },
+    {
+      "day": 8,
+      "date": "2026-10-12",
+      "plannedType": "reset",
+      "status": "confirmed",
+      "title": "用量重置",
+      "summary": "Tibo 发布重置，并说明按太平洋时间当天结束前落地；确认帖已收录。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2109812216212099456",
+      "resetStatus": "confirmed",
+      "sourceAt": "2026-10-13T01:03:25.000Z"
+    },
+    {
+      "day": 9,
+      "date": "2026-10-13",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "桌面端磁盘占用降低 60%",
+      "summary": "优化了 ChatGPT 与 Codex 桌面应用的状态存储方式，磁盘占用约减少 60%。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2110151780478927344",
+      "sourceAt": "2026-10-13T23:32:43.000Z"
+    },
+    {
+      "day": 10,
+      "date": "2026-10-14",
+      "plannedType": "reset",
+      "status": "confirmed",
+      "title": "用量重置",
+      "summary": "Tibo 当日发布重置，并玩笑回应“重置按钮丢了”的传言；随后说明两小时内落地。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2110595484180214059",
+      "resetStatus": "confirmed",
+      "sourceAt": "2026-10-15T04:55:51.000Z"
+    },
+    {
+      "day": 11,
+      "date": "2026-10-15",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "减少“模型已满载”",
+      "summary": "通过一系列改动与更多算力，显著降低“Selected model is at capacity”的出现频率，并会自动继续而非直接阻塞。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2110750421367287996",
+      "sourceAt": "2026-10-15T15:11:30.000Z"
+    },
+    {
+      "day": 12,
+      "date": "2026-10-16",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "提高实际可用额度",
+      "summary": "在子代理之间复用上下文、延长缓存时间并优化请求路由以提高缓存命中，从而提升实际可用量。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2111244596131111253",
+      "sourceAt": "2026-10-16T23:55:11.000Z"
+    },
+    {
+      "day": 13,
+      "date": "2026-10-17",
+      "plannedType": "reset",
+      "status": "confirmed",
+      "title": "用量重置",
+      "summary": "Tibo 当日发布重置，说明当天太平洋时间结束前落地；确认帖已收录。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2111492673890824348",
+      "resetStatus": "confirmed",
+      "sourceAt": "2026-10-17T16:20:57.000Z"
+    },
+    {
+      "day": 14,
+      "date": "2026-10-18",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "桌面端可编辑历史消息",
+      "summary": "桌面应用支持在会话内编辑此前发送的消息，属于长期被要求的体验改进。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2111990254408434095",
+      "sourceAt": "2026-10-19T01:18:10.000Z"
+    },
+    {
+      "day": 15,
+      "date": "2026-10-19",
+      "plannedType": "reset",
+      "status": "confirmed",
+      "title": "用量重置",
+      "summary": "Tibo 先发“We're cooked”，随后改口并宣布重置已生效。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2112432076767289678",
+      "sourceAt": "2026-10-20T06:33:48.000Z",
+      "resetStatus": "confirmed"
+    },
+    {
+      "day": 16,
+      "date": "2026-10-20",
+      "plannedType": "feature",
+      "status": "reported",
+      "title": "API 12 小时缓存 / 登录用户永久缓存",
+      "summary": "API 可缓存 12 小时；登录用户跨 Codex 与 Work 的缓存长期保留，回到旧会话不再有惩罚并可保证命中。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2112712984644784534",
+      "sourceAt": "2026-10-21T01:10:02.000Z"
+    },
+    {
+      "day": 17,
+      "date": "2026-10-21",
+      "plannedType": "reset",
+      "status": "observed",
+      "title": "用量重置",
+      "summary": "Tibo 宣布当日为重置日，并说明次日太平洋时间上午 10 点前落地；社区观测随后记录到重置已生效。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2113162277688070445",
+      "resetStatus": "observed",
+      "sourceAt": "2026-10-22T06:55:22.000Z"
+    },
+    {
+      "day": 18,
+      "date": "2026-10-22",
+      "plannedType": "feature_reset",
+      "status": "reported",
+      "title": "Decisions API GA + 重置",
+      "summary": "Tibo 报告 Decisions API GA、OpenResponses 加入 Linux Foundation 及性能改进；同帖提及重置，随后回复给出未来截止时间，仍属重置预告。",
+      "sourceUrl": "https://x.com/thsottiaux/status/2113492187770175603",
+      "resetStatus": "planned",
+      "sourceAt": "2026-10-23T04:46:19.000Z"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "tibo-reset-live", "version": "0.1.0", "private": true,
+  "type": "module", "engines": {"node": ">=24.0.0"},
+  "scripts": {"start": "node --env-file-if-exists=.env server.js", "test": "node --test", "keys": "web-push generate-vapid-keys"},
+  "dependencies": {"express": "^5.1.0", "web-push": "^3.6.7"}
+}

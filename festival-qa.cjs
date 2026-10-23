@@ -1,0 +1,25 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',headless:true});
+ const page=await browser.newPage({viewport:{width:1440,height:1100},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(process.env.QA_BASE_URL||'http://localhost:8788');await page.waitForSelector('.day');
+ await page.screenshot({path:'waiting-preview.png',fullPage:true});
+ await page.locator('.appearance-preview summary').click();await page.selectOption('#appearance','0');
+ assert(await page.locator('body').evaluate(e=>e.classList.contains('celebrating')));assert(await page.locator('#preview-notice').isVisible());assert.equal(await page.locator('#confetti i').count(),54);
+ await page.waitForTimeout(700);await page.screenshot({path:'festival-preview.png',fullPage:true});
+ await page.locator('#replay').click();assert.equal(await page.locator('#confetti i').count(),54);
+ await page.selectOption('#appearance','4');assert.equal(await page.locator('body').getAttribute('data-portrait-stage'),'5');
+ assert.equal(await page.locator('#confetti i').count(),0);
+ await page.screenshot({path:'day5-preview.png',fullPage:true});
+ await page.locator('#tibo-mascot').screenshot({path:'day5-mascot.png'});
+ await page.locator('#exit-preview').click();assert(await page.locator('#preview-notice').isHidden());
+ await page.setViewportSize({width:390,height:844});await page.selectOption('#appearance','0');
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert(await page.locator('#tibo-mascot').evaluate(e=>e.classList.contains('collapsed')),'小屏应默认收起人物，避免遮挡月历与正文');
+ await page.screenshot({path:'festival-mobile-preview.png',fullPage:true});
+ await page.locator('#mascot-toggle').click();assert.equal(await page.locator('#mascot-toggle').getAttribute('aria-expanded'),'true');
+ await page.locator('#mascot-toggle').click();assert.equal(await page.locator('#mascot-toggle').getAttribute('aria-expanded'),'false');
+ await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#replay').click();assert.equal(await page.locator('#confetti i').count(),0);
+ assert.deepEqual(errors,[]);console.log('狂欢、第五阶段、预览退出、收起人物、手机布局与减少动态设置检查通过');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1);});
