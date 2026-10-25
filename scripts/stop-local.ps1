@@ -1,9 +1,26 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$dataDir = if ($env:TIBO_DATA_DIR) { if ([IO.Path]::IsPathRooted($env:TIBO_DATA_DIR)) { [IO.Path]::GetFullPath($env:TIBO_DATA_DIR) } else { [IO.Path]::GetFullPath((Join-Path $projectRoot $env:TIBO_DATA_DIR)) } } elseif ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'TiboResetLive' } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData\Local\TiboResetLive' }
+$dataDir = $null
+$nodes = @()
+$systemNode = Get-Command node.exe -ErrorAction SilentlyContinue
+if ($systemNode) { $nodes += $systemNode.Source }
+$runtimeDir = Join-Path $projectRoot '.runtime'
+if (Test-Path -LiteralPath $runtimeDir) { $nodes += @(Get-ChildItem -LiteralPath $runtimeDir -Directory | ForEach-Object { Join-Path $_.FullName 'node.exe' }) }
+foreach ($candidate in $nodes) {
+    if (Test-Path -LiteralPath $candidate) {
+        $resolved = & $candidate (Join-Path $PSScriptRoot 'local-control.mjs') data-dir
+        if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the local data directory. Nothing was stopped.' }
+        $dataDir = [string]$resolved
+        break
+    }
+}
+if (-not $dataDir) { throw 'Node.js was not found. Restore the runtime before stopping; process records were preserved.' }
 $ledgerPath = Join-Path $dataDir 'local-instance.json'
 $legacyLedgerPath = Join-Path $projectRoot 'data\local-instance.json'
-if (-not (Test-Path -LiteralPath $ledgerPath) -and $legacyLedgerPath -ne $ledgerPath -and (Test-Path -LiteralPath $legacyLedgerPath)) {
+$servicePath = Join-Path $dataDir 'local-service.json'
+$defaultDir = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'TiboResetLive' } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData\Local\TiboResetLive' }
+# 显式选择的新目录或仍有守护记录时，不退回另一目录的旧实例。
+if (-not (Test-Path -LiteralPath $ledgerPath) -and -not (Test-Path -LiteralPath $servicePath) -and $dataDir -eq $defaultDir -and $legacyLedgerPath -ne $ledgerPath -and (Test-Path -LiteralPath $legacyLedgerPath)) {
     $ledgerPath = $legacyLedgerPath
     $dataDir = Split-Path $legacyLedgerPath
 }
