@@ -51,7 +51,7 @@ jobs:
       - name: 检查 Unix 启动脚本语法
         if: runner.os != 'Windows'
         run: |
-          for script in *.sh *.command scripts/*.sh; do
+          for script in *.sh *.command scripts/*.sh scripts/launchers/*.sh scripts/launchers/*.command; do
             sh -n "$script" || exit 1
           done
       - name: 检查跨平台控制器语法

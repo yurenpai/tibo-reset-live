@@ -4,6 +4,8 @@
 >
 > 本轮完成代码审阅、隔离验证与交接文档；没有修改业务代码，没有提交或推送。下文的缺陷是待处理项，不是已经修复的功能。
 
+> 同日后续更新：上述审阅已由维护者提交、合并远程 README 并推送，下面第 2、10 节的 HEAD 与未提交清单保留为**审阅时的历史快照**。之后新增目录整理：根目录保留 `start.* / stop.*`，7 个自启管理入口移到 `scripts/launchers/`，页面提示和 CI 语法检查同步更新；README 简化，详细说明迁入 [ADVANCED_ZH.md](ADVANCED_ZH.md)。自启实际调用的核心路径没有改变。R1–R5 没有在本次整理中修复，接手请以实时 Git 状态为准。
+
 ## 1. 先读这里
 
 项目是供用户从 GitHub 下载、自行在电脑上运行的中文 Codex 额度重置日历。作者不提供公共后台。默认不登录 X，不使用 Cookies、Token 或 Telegram；本机后台读取第三方公开 JSON，再通过操作系统发送桌面通知。关闭网页后后台继续工作；电脑关机、休眠、断网时不能实时监测。
@@ -134,9 +136,9 @@ CSS 加载顺序：`style.css → festival.css → mascot.css → evidence.css �
 
 | 系统 | 启动 | 启动并设置登录自启 | 停止 | 取消以后登录自启 |
 | --- | --- | --- | --- | --- |
-| Windows | `start.cmd` | `start-service.cmd` | `stop.cmd` | `disable-autostart.cmd` |
-| macOS | `start.command` | `start-service.command` | `stop.command` | `disable-autostart.command` |
-| Linux | `sh start.sh` | `sh start-service.sh` | `sh stop.sh` | `sh disable-autostart.sh` |
+| Windows | `start.cmd` | `scripts/launchers/start-service.cmd` | `stop.cmd` | `scripts/launchers/disable-autostart.cmd` |
+| macOS | `start.command` | `scripts/launchers/start-service.command` | `stop.command` | `scripts/launchers/disable-autostart.command` |
+| Linux | `sh start.sh` | `sh scripts/launchers/start-service.sh` | `sh stop.sh` | `sh scripts/launchers/disable-autostart.sh` |
 
 Windows `scripts/start-local.ps1` 必要时下载官方便携 Node 24 并校验 SHA256，安装依赖后交给统一控制器。Unix `scripts/start-unix.sh` 要求预装兼容 Node/npm，补充常见 Homebrew PATH，依赖变化时执行 `npm ci`；尚未做 Node 自动下载。
 

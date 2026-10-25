@@ -131,7 +131,7 @@ function render(){
   $('.footnote').textContent='本机后台使用系统桌面通知，关闭网页后仍可提醒。请保持电脑唤醒、联网和后台进程运行；系统勿扰模式可能隐藏弹窗。重置确认记录的是原帖发布时间，个人额度以账号显示为准。';
   $('#subscribe').textContent='开启本机桌面提醒';$('#unsubscribe').textContent='关闭本机提醒';
   $('#subscribe').hidden=data.desktop.enabled;$('#unsubscribe').hidden=!data.desktop.enabled;
-  const platformHelp=data.desktop.platform==='darwin'?'双击 start.command 启动；start-service.command 可设置登录自启，stop.command 停止。':data.desktop.platform==='linux'?'运行 ./start.sh 启动；./start-service.sh 可设置登录自启，./stop.sh 停止。':'双击 start.cmd 启动；start-service.cmd 可设置登录自启，stop.cmd 停止。';
+  const platformHelp=data.desktop.platform==='darwin'?'双击根目录 start.command 启动、stop.command 停止；scripts/launchers/start-service.command 可设置登录自启。':data.desktop.platform==='linux'?'运行 sh start.sh 启动、sh stop.sh 停止；sh scripts/launchers/start-service.sh 可设置登录自启。':'双击根目录 start.cmd 启动、stop.cmd 停止；scripts/launchers/start-service.cmd 可设置登录自启。';
   $('#desktop-info').textContent=(data.desktop.service?.supervised?'后台守护正在运行，进程异常退出会自动重启。':'本地后台正在运行。')+'关掉网页仍可提醒。记录和偏好保存在系统用户数据目录，更新源码或重启不会清空；关机或休眠期间暂停监测。'+(data.desktop.supported?'':` 当前通知后端未就绪：${data.desktop.hint||'系统不支持'}。`)+(data.desktop.error?' 最近通知错误：'+data.desktop.error:'');
   $('#background-help').textContent=platformHelp;
   if(!desktopLoaded){showPreferences(data.desktop.preferences);desktopLoaded=true;$('#preferences-status').textContent='偏好保存在这台电脑，关闭网页后继续生效。';}

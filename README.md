@@ -1,257 +1,106 @@
 # Tibo Reset Live · OpenAI Codex 额度重置追踪器
 
-Tibo Reset Live 是一个可在用户自己电脑运行的 OpenAI Codex 额度重置追踪器。它提供中文重置日历、Tibo 28 天计划、Windows、macOS 和 Linux 桌面提醒、重置狂欢页面和人物等待状态，无需登录 X，也不要求仓库作者提供公共服务器。
+在自己的电脑上查看 **中文重置日历、Tibo 28 天计划和桌面提醒**。无需登录 X、提供 Cookies 或使用 Telegram，仓库作者也无需提供公共服务器。支持 Windows、macOS 和 Linux；Windows 启动器可自动准备 Node，其他系统需先安装。
 
-> No-login OpenAI Codex usage-limit reset tracker and Tibo 28-day plan calendar, with Windows, macOS and Linux desktop notifications.
+> No-login OpenAI Codex usage-limit reset tracker and Tibo 28-day plan calendar, with local desktop notifications.
 
-下载代码后用对应系统的启动文件，在自己的电脑运行中文重置月历、28 天计划、金色狂欢和人物五阶段。默认从公共 JSON 源定时收录 Tibo 的原帖与回复，无需 X 账号、Cookies、API Token、Telegram 或云服务器。提醒使用本机系统通知，关闭网页后由后台进程继续检查。
-
-公共源由第三方维护，仍需联网，可能延迟、遗漏或中断，不能保证秒级或完整覆盖；页面显示本机检查时间、上游更新时间、最新收录帖时间和错误。可选官方 X API / 云端 Web Push 保留。
+默认从第三方公共 JSON 接口定时收录 `@thsottiaux` 的帖子，由本项目区分重置预告、完成陈述、社区观测和功能更新。它不是秒级实时服务：第三方可能延迟、遗漏或中断。**目前默认只有一个公共帖子源，未内置备用源或社区实时接口。**
 
 ## 界面预览
 
-### 重置日历与金色狂欢
+### 重置日历与人物五阶段
 
-保留重置月历、证据分类、双时区详情和“再撒一把彩屑”。官方确认与社区观测都可以庆祝，但页面会明确区分来源，不把预告当作重置完成。
+![中文重置月历、金色狂欢与人物状态](docs/images/reset-calendar.png)
 
-![重置日历与金色狂欢界面，包含重置记录、北京时间详情和彩屑重播按钮](docs/images/reset-calendar.png)
+重置预告持续显示“等待落地”；完成证据出现后庆祝 24 小时，人物再随等待时间进入 Day 1–Day 5。预告、发卡和功能发布不能冒充重置到账。
 
 ### Tibo 的 28 天计划
 
-独立展示 28 个 PT 计划日、功能与重置类型、时间进度、来源链接，以及尚未收录的待观察日期。
+![28 天计划网格、分类、统计和来源](docs/images/plan-overview.png)
 
-![28 天计划总览，包含功能与重置分类、进度统计、日期网格和计划声明](docs/images/plan-overview.png)
+三个视图：**重置动态 / 28 天计划 / 全部动态**。计划按太平洋时间（PT），月历按北京时间；页面筛选和通知类别分别设置。
 
-> 截图基于 2026-10-23 演示时已收录的数据，不代表当前实时状态。时间进度不是完成率，计划声明和预告也不等于重置已到账。
-> 截图内沿用的人物素材与原图片适用相同的版权限制，详见 [图片来源说明](public/assets/README.md)。
+> 截图基于 2026-10-23 演示数据，不代表当前状态。时间进度不是完成率，官方陈述和社区观测也不代表你的账号已到账。人物图片的使用说明见 [素材说明](public/assets/README.md)。
 
-## 当前状态
+## 三步开始
 
-- 本地免登录源已实际读取验证，包含主帖、回复、原文、UTC 时间和父帖 ID；系统通知可在页面点击测试。真实 X 长连接与公网 Web Push 尚未完成端到端验收。
-- `resources/history.json` 保留原有 10 条重置历史；`resources/plan-data.json` 独立维护计划声明、18 个已绑定原帖的计划日及核实发布时间。历史回填不发通知。
-- 未配置 X 时自动使用公共源；公共源故障时明确显示异常，继续保留历史，不伪装为实时连接。
-- Node.js 24.15+（24 LTS）或 26+；Windows 启动器可自动下载并校验便携 Node 24，无需管理员安装。macOS/Linux 目前需先安装 Node.js。SQLite、日志和偏好位于系统用户数据目录，不随源码更新丢失。
+1. 从 GitHub 下载 ZIP 并解压，或克隆仓库。macOS/Linux 先安装 **Node.js 24.15+（24 LTS）或 26+**，不支持 Node 25。
+2. 使用对应系统的启动入口：
 
-## 本地启动
+   | 系统 | 启动日历与后台 | 停止后台 |
+   | --- | --- | --- |
+   | Windows | 双击根目录 `start.cmd` | 双击根目录 `stop.cmd` |
+   | macOS | 双击根目录 `start.command` | 双击根目录 `stop.command` |
+   | Linux | 项目目录运行 `sh start.sh` | 项目目录运行 `sh stop.sh` |
 
-| 系统 | 普通启动 | 登录后自动启动 | 停止 | 取消自动启动 |
-| --- | --- | --- | --- | --- |
-| Windows | 双击 `start.cmd` | 双击 `start-service.cmd` | 双击 `stop.cmd` | 双击 `disable-autostart.cmd` |
-| macOS | 双击 `start.command` | 双击 `start-service.command` | 双击 `stop.command` | 双击 `disable-autostart.command` |
-| Linux | `./start.sh` | `./start-service.sh` | `./stop.sh` | `./disable-autostart.sh` |
+3. 页面打开后点击“开启本机桌面提醒”，选择类别，并在“数据来源与后台状态”发送测试通知。
 
-Windows 首次需要联网下载依赖；没有兼容 Node 时会从 nodejs.org 下载便携 Node 24，并按官方 SHA256 清单校验。macOS 和 Linux 先安装 Node.js 24.15+（24 LTS）或 26+，然后运行上表启动文件；首次启动同样会自动执行 `npm ci`。macOS 从 ZIP 解压后若不能双击，可先在终端运行 `chmod +x *.command`；若因下载文件的隔离属性被拦截，可在 Finder 里右键 `start.command` 选择“打开”，或在终端执行 `sh start.command`。Linux 从 ZIP 解压后若没有执行权限，可先运行 `chmod +x *.sh`，或直接用 `sh start.sh`。
+首次启动需要联网安装依赖。Windows 没有兼容 Node 时会下载官方便携 Node 24 并校验 SHA256，不需要管理员安装。macOS 若双击被阻止，可右键选择“打开”，或在终端运行 `sh start.command`；ZIP 解压后也可先执行 `chmod +x *.command scripts/launchers/*.command`。
 
-启动器会检查重复进程、选择 8788–8808 间的空闲端口并打开本地日历。打开后点击“开启本机桌面提醒”，按需选择通知类别；在“数据来源与后台状态”内点击“发送桌面测试通知”。Windows 使用系统 Toast，macOS 使用通知中心，Linux 使用 `notify-send`；Debian/Ubuntu 缺少它时执行 `sudo apt install libnotify-bin`。
+启动器自动选择 8788–8808 的空闲端口，打开本机日历。Windows 使用 Toast、macOS 使用通知中心、Linux 使用 `notify-send`；Debian/Ubuntu 缺少它时安装 `libnotify-bin`。Linux 无桌面环境无法显示本机弹窗。
 
-首次启动不会自行添加登录启动项。Windows 使用当前用户“启动”目录，macOS 使用 LaunchAgent；Linux 的 systemd 图形会话目标可用时使用用户级服务，否则回退到桌面会话自启。所有方案都不需要管理员安装系统服务。停止请求使用随机令牌校验后台身份，不会按名称批量杀死其他 Node 项目。取消自动启动只影响以后的登录；立即停止监测请运行对应停止脚本。设置自启后请保留源码目录；移动目录后需从新位置重新设置（Windows 可先在旧位置取消）。
+**关闭网页后，后台仍可检查并发送系统通知；电脑必须保持唤醒、联网。** 关机和休眠期间不能监测，恢复后补查可见记录，仅提醒最近 6 小时的新动态。系统勿扰和通知权限会影响弹窗。
 
-关闭网页不停止后台；关机、休眠、断网或源故障期间无法持续监测。恢复后补查可见记录，仅对最近 6 小时的新记录提醒，首次读取及旧记录不群发。勿扰模式、系统通知设置和平台通知支持会影响弹窗展示。工作进程异常退出时，用户级后台守护会按退避间隔自动拉起；只有用户主动运行 `start-service` 才会写入登录启动项。
+## 登录后自动启动
 
-记录、源读取游标、通知开关和类别均持久化到系统用户数据目录：
+普通启动不会添加自启项。需要时打开 `scripts/launchers/`，使用对应入口：
+
+| 系统 | 启动并开启登录自启 | 取消以后登录自启 |
+| --- | --- | --- |
+| Windows | 双击 `start-service.cmd` | 双击 `disable-autostart.cmd` |
+| macOS | 双击 `start-service.command` | 双击 `disable-autostart.command` |
+| Linux | `sh scripts/launchers/start-service.sh` | `sh scripts/launchers/disable-autostart.sh` |
+
+Windows/macOS 表中的文件都位于 `scripts/launchers/`。这些是用户级自启，无需管理员服务；取消自启不停止当前后台，立即停止仍用根目录 `stop.*`。设置后保留源码目录，移动目录需重新配置。
+
+旧版根目录的自启管理入口已移入该目录，**根目录启动/停止入口及系统自启实际调用的核心路径保持不变**。已有自启不会仅因这次入口归档就要求重装。
+
+## 数据与来源
+
+日历、偏好、游标和成功通知去重记录保存在系统用户数据目录：
 
 - Windows：`%LOCALAPPDATA%\TiboResetLive`
 - macOS：`~/Library/Application Support/TiboResetLive`
 - Linux：`${XDG_DATA_HOME:-~/.local/share}/tibo-reset-live`
 
-正常关机、更新源码、换一个新的源码目录或重新启动都不会清空数据。同一系统用户默认共用一份记录和一个后台。首次从旧版本升级前，先在旧目录运行 `stop.cmd`；启动时程序通过 SQLite 一致快照迁移 `data/calendar.sqlite` 中的记录、偏好和已提交 WAL 数据。旧数据库保留用于回退，新目录已有数据库时不覆盖。高级用户可用 `TIBO_DATA_DIR` 指定其他数据目录，相对路径按项目根目录解析。
+正常重启和更新源码不会清空记录。旧版升级先在旧目录停止后台；迁移保留旧库，不覆盖已有新库。自定义 `TIBO_DATA_DIR` 建议写入本机 `.env`，避免仅在终端设置后登录自启时丢失环境。
 
-已有 Node 的用户也可运行：
+默认免登录检查：智能模式平时约 5 分钟、新预告后约 2 分钟，可在页面改为快速/标准/省流。页面列出主源、备用和社区源的配置状态、成功时间、限流与失败原因。备用切换机制已实现，默认备用地址仍为空；勾选社区提醒不会自动接入社区数据。详见 [来源与配置说明](docs/ADVANCED_ZH.md#免登录公共数据源) 和 [候选核查](docs/source-review.md)。
+
+## 项目目录与文档
+
+```text
+tibo-reset-live/
+├─ start.* / stop.*     三平台日常启动与停止
+├─ src/                后台、分类、通知、SQLite
+├─ public/             页面、样式与人物素材
+├─ resources/          随项目分发的历史与计划资料
+├─ scripts/            跨平台启动器、后台控制与自启实现
+│  └─ launchers/        登录自启管理入口
+├─ tests/              Node 与浏览器检查
+└─ docs/               配置说明、开发交接与截图
+```
+
+根目录的 `package*.json`、`.env.example`、Docker、Git 和许可证文件属于工具链常用入口，继续保留。个人数据、`.env`、`.runtime/`、`node_modules/` 和 `.artifacts/` 不提交仓库。
+
+- [详细配置、证据规则、社区接口、云部署与测试](docs/ADVANCED_ZH.md)
+- [中文开发交接：架构、已复现问题和接手顺序](docs/DEVELOPMENT_HANDOFF_ZH.md)
+- [公共来源候选核查](docs/source-review.md)
+- [图片来源与使用限制](public/assets/README.md)
+
+## 开发与当前验证边界
+
+已有兼容 Node 时：
 
 ```sh
 npm ci
 npm run local
 ```
 
-`npm run local` 是前台运行，关闭终端会停止；需要隐藏后台请用上表启动文件。已有兼容 Node 时可用 `npm run local:status` 查询后台、`npm run local:stop` 停止。Linux 无桌面服务器能运行日历服务，但无法显示本机桌面弹窗。
+这是前台启动，关闭终端即停止；隐藏后台请用根目录启动文件。用 `npm run local:status` / `npm run local:stop` 查询或停止启动器管理的后台。本机服务只绑定 `127.0.0.1`。
 
-本地入口只绑定 `127.0.0.1`，不开放给局域网。本地模式不需要 VAPID 或 HTTPS；提醒类别和开关保存在本机 SQLite，与页面筛选独立。`npm run local` 默认地址为 http://localhost:8788；双击启动器遇到占用会在 8788–8808 中选择空闲端口，打开时请使用启动器显示的 localhost 地址。
+基础验证运行 `npm test`。浏览器测试、隔离数据和可选 Docker / Web Push 部署见 [详细说明](docs/ADVANCED_ZH.md#验证)。GitHub Pages 无法运行后台。
 
-三平台共用相同的后台控制器和数据格式；已新增 GitHub Actions 配置，推送后将在 Windows、macOS、Ubuntu 上运行 Node 测试与脚本检查。本地已验证 Windows 启动、重复启动、停止和数据恢复；macOS/Linux 的通知权限、桌面环境和登录自启仍需对应真机验收，新增 CI 也需推送后查看实际结果。高级用户配置 `.env`：`SOURCE_MODE=auto`（默认）会在有 `X_BEARER_TOKEN` 时选择官方源，否则选择公共源；`public` 固定使用公共源，`api` 只用官方接口。
+Windows 启动流程已本地验证；macOS/Linux 的实际桌面通知、登录自启，以及官方 X API、公网 Web Push 仍需对应环境验收。**已知问题：跨日功能回复可能归错计划日，桌面通知临时失败尚无自动重试**；详情和修复建议见开发交接，不应把现有测试通过理解为这些问题已经修复。
 
-## 项目目录
-
-普通使用者从根目录双击启动即可，开发文件按用途归档：
-
-```text
-tibo-reset-live/
-├─ src/                 后台、消息分类、通知与数据库代码
-├─ public/              网页、样式与人物图片
-├─ resources/           项目自带的历史记录与 28 天计划
-├─ tests/               自动测试（browser/ 内为浏览器检查）
-├─ scripts/             三平台启动、停止、守护与自启动脚本
-├─ docs/                文档与展示截图
-├─ README.md            使用说明
-├─ package.json         运行命令与依赖
-├─ start.cmd            双击启动
-├─ start-service.cmd    启动并设置登录自启动
-├─ start.command        macOS 双击启动
-├─ start.sh             Linux / Unix 启动
-└─ stop.*               各平台停止后台
-```
-
-`.env.example`、Docker 配置及登录自启动开关也保留在根目录。运行后生成的 `.runtime/`、`node_modules/` 和 `.artifacts/` 均不提交 GitHub；旧版 `data/` 也继续忽略。`resources/` 是随项目分发的资料，个人新增记录、检查游标和提醒设置保存在系统用户数据目录，不上传 GitHub。
-
-## 免登录公共数据源
-
-默认地址：[codex-reset.com/api/feed](https://codex-reset.com/api/feed)。这是第三方公开收录接口，程序只读其 `tweets` 内的原文、发布时间、账号和父帖关系；不采用它的 `confirmed`、信号评分或“已到账”判断。通过本项目自己的分类器区分功能、预告、完成和发卡，并保留原帖与收录源链接。收录的原文未经本项目独立核验，不等于直接通过官方 API 验证。
-
-- 默认“智能检查”：平时约 5 分钟，出现新重置预告后约 2 分钟；到账证据出现后恢复普通间隔。单条未落地预告最多加速 48 小时，日历仍继续保留预告。
-- 本机页面“数据来源与后台状态 → 自动检查频率”可选择智能、快速（2 分钟）、标准（5 分钟）、省流（15 分钟）；保存后立即重新安排下一次检查，关闭网页或重启后仍有效。界面显示实际间隔和下次计划检查时间。
-- 间隔加入约 ±10% 随机错峰，最短 120 秒；同一后台不并发检查。失败后从至少约 5 分钟逐级退避，最长约 30 分钟；遇到上游 `Retry-After` 则至少等待其指定时间。恢复成功后回到所选模式。
-- 休眠恢复后补查一次，仍遵守最短间隔和上游限流等待时间；电脑关闭期间无法监测。页面每 20 秒读取的是本机后台，不会额外请求公共源。
-- 支持上游提供 ETag 时发送条件请求；上游不提供 ETag 时仍下载完整 JSON，不能保证节省响应流量。
-- 高级配置使用 `PUBLIC_POLL_MODE=smart|fast|standard|saver`，本机保存的选择优先。旧 `PUBLIC_POLL_SECONDS` 仅在没有新模式设置时映射到安全预设，不再支持任意秒数。官方 X 实时流不显示此频率选择。
-- `fetched_at` 是上游检查时间，最新原帖时间不是检查时间；用户长时间没发帖不等于源已故障。
-- 上游标记 stale 或检查时间落后 15 分钟时显示过期，静默保留记录，不推送这些记录。
-- 第一次成功读取只建立基线；后续按原帖 ID 去重，新补录的旧帖不群发。回复缺失父帖信息时不猜测 Done 的含义。
-- HTTP 429、断网、格式改变或错账号均显示异常；不会把失败解释成“没有新帖”。
-- `PUBLIC_FEED_URL` 可换为相同结构的可信 HTTPS JSON 源。这个功能依赖第三方服务可用性，你无需运营服务器，但不能保证来源永久可用或原帖发布后立刻同步。
-- `PUBLIC_FEED_FALLBACK_URLS` 可填写最多两个相同 JSON 结构的备用接口，逗号分隔。主源正常时不请求备用；网络错误、限流、格式错误或数据过期时按顺序尝试。各源独立保存 ETag、失败退避和 `Retry-After` 等待；主源冷却结束后优先重试，成功则切回。同一帖子跨源仍按 X 帖子 ID 去重。
-- **当前默认只有一个公共帖子源，没有内置备用源或社区实时观测接口。** 2026-10-25 核查的候选尚不符合接入要求，详见[候选来源核查](docs/source-review.md)。备用机制已实现，不代表已找到独立、可靠的第二或第三条来源。
-- 页面「数据来源与后台状态 → 逐项来源状态」显示各源的地址、最近检查/成功时间、上游时间、冷却时间和失败原因。备用源与社区源未配置时明确提示；主源失败不会被显示为“没有新动态”。
-- 探测时 X Syndication 返回 429，公共 RSSHub 路由不可用，FxTwitter 用户接口只返回账号资料，所以它们未被伪装成免登录时间线备用源。
-
-## 三个内容视图
-
-- **重置动态（默认）**：官方确认、社区观测到账、重置预告、重置卡；保留原月历，日期按北京时间分配。待核实记录仍保存，但不混入已发布动态或推送。
-- **28 天计划**：独立 28 日网格，功能、重置、功能加重置、待观察。日期按 `America/Los_Angeles`（PT）。
-- **全部动态**：计划总览与合并后的功能 / 重置月历。混合帖可有两个主题条目，共用同一原帖，不把功能状态当作重置完成。
-
-页面筛选与通知偏好完全独立。直接打开默认重置视图；切换后会把视图写入 URL，刷新或分享链接仍保留选择。通知中的功能链接会打开全部动态，摘要链接打开对应计划日。
-
-月历不再向前显示无记录的月份；最早可翻到已收录首月，最晚为当前月。计划视图独立覆盖到 11 月 1 日，不受月历翻页限制。
-
-## 28 天计划及来源
-
-周期固定为 **2026-10-05 至 2026-11-01（含首尾），共 28 个 PT 日期**。
-
-原始计划声明：
-https://x.com/thsottiaux/status/2106845241357824205
-
-Tibo 声明未来 28 天每天发布明显改进或全面重置。**这只是计划声明，不是每日完成的保证，更不是未来重置已到账的凭据。**
-
-- `resources/plan-data.json` 存储 `day`、`date`、`plannedType`（feature/reset/feature_reset/upcoming）、`status`（planned/reported/confirmed/observed/pending）、`title`、`summary`、`sourceUrl`，有真实原帖时另带 `sourceAt`。
-- 回填功能原帖链接经公开索引定位，再通过 FxTwitter 公共镜像核对作者、文本与发布时间；每条显示 Tibo 原帖，不把截图内容直接当作完成数据。运行时来源可选公共 JSON 或官方 API。
-- `src/plan.js` 把条目和实时事件合并成 28 日骨架；未来或过去未收录日期都标为“待观察”，不是“当天没有更新”。未来时间戳不参与已记录统计。
-- `plannedType` 表示内容类型，颜色不表示完成：蓝色功能、金色重置、蓝金双色混合、灰色待观察；黄色边框是 PT 今天。每格还有文字标签，提供可展开数据表，不只靠颜色区分。
-- **已进行 N/28 天**是 PT 日历时间进度（含已进入的今天），不是完成率；剩余天数不含今天。
-- **已确认重置次数**只算官方完成证据，按计划日去重，不含发卡、预告、社区观测；仅社区观测另行显示。功能改进按有原帖的功能计划日计数，同日多项只算一天。不能把参考图的数字当作本项目的验证结果。
-
-### PT 与北京时间
-
-计划 Day 按 PT，月历及事件详情按北京时间，详情另列 PT 发布时间。例：Day 18 的帖子是 `2026-10-22 21:46 PT`，对应 `2026-10-23 12:46 北京时间`，并非数据差一天。计划日还显示它对应的北京时间区间。
-
-换算使用 IANA 时区，不固定减 7/8 小时。计划最后一天 11 月 1 日遇到洛杉矶夏令时结束，当地日长 25 小时，测试覆盖这一边界。
-
-## 证据等级、实时收录与回复
-
-事件区分 `topic`（reset / feature / plan）、`evidence` 和 `status`：
-
-| 内容 | topic | evidence | status |
-| --- | --- | --- | --- |
-| 官方完成确认 | reset | official | confirmed |
-| 社区观测到账 | reset | community | observed |
-| 未来重置预告 | reset | announcement | planned |
-| 重置卡 | reset | official | reported / confirmed（确认的是卡，不是自动重置） |
-| 功能发布陈述 | feature | official | reported |
-| 每日汇总 | plan | summary | reported（派生摘要，不是新完成证据） |
-
-待核实候选保留 `pending/unverified`，不发推送。功能使用独立 `kind: feature`，绝不塞进 confirmed/scheduled/banked，也不能恢复人物阶段。
-
-- X 规则为 `from:thsottiaux -is:retweet`，保留 Tibo 自己发出的回复，时间线补漏不排除 replies。
-- 同主题、同证据层级的回复并入父记录 `followUps`；升级为完成确认的 Done 另记。被合并的多层回复仍可找回主帖上下文。
-- 仅从有明确发布陈述的 Day N 帖子识别功能，模糊文本保守处理，可能漏报，不能据此宣称覆盖全部更新。混合帖用 `<原帖ID>-feature` 独立去重。
-- 首次 X 启动只回填最近 10 条不群发；之后实时流与每两分钟时间线补漏。帖子 ID 去重，断流重连。不自动合并编辑产生的新 ID。
-- “Lands tomorrow before 10am PST” 按洛杉矶当地时区推算观察窗口，并保留严格按 PST 字面计算的备选截止。窗口到点不自动升级完成，不发送到点提醒。
-
-## 金色狂欢与人物五阶段
-
-- **未落地的新预告持续显示金色预热主页**：“重置已宣布，等它落地”，同时列出宣布时间、预告截止和上次完成记录。即使超过 24 小时或预告窗口已过，也继续显示“等待核实”，不退回没有预告的等待室。后续有完成证据才进入正式狂欢。
-- **官方确认或社区观测到账后保留 24 小时金色庆祝**，因此北京时间到账当天会一直有金色样式；“再撒一把彩屑”始终可用。不是到午夜就提前撤掉。
-- 两者不冒充：官方确认写明官方来源；社区观测显式注明“社区观测到账，非官方完成确认”，光晕较静态，但不撤掉金色和彩屑。
-- 人物按最近完成记录经过的完整 24 小时计算 Day 1–Day 5，第五阶段封顶。预告、发卡、功能、待核实不恢复人物、不制造庆祝。
-- 底部预览只改外观；无完成记录时显示等待确认；未来时间戳不算完成。窄屏默认收起人物，用户可展开；尊重减少动态效果设置。
-- 预览时顶部提示固定可见，人物标签显示“预览”，人物卡内可直接退出；预览不保存成真实状态。
-- 计划详情在宽屏与日期网格并排，窄屏放在网格前，点击日期可定位详情；同一原帖不重复展示链接，待观察卡片避免重复状态文字。
-
-## 通知偏好（后台保存）
-
-本机模式保存到当前电脑，通过系统桌面通知投递，不要求浏览器通知权限或 VAPID；云端模式继续使用下述 Web Push 订阅。
-
-| 开关 | 默认 | 覆盖内容 |
-| --- | --- | --- |
-| 重置已确认 | 开 | 官方完成确认 |
-| 社区观测到账 | 开 | 社区观测 |
-| 重置预告 / 重置卡 | 关 | 预告及发卡 |
-| 功能更新 | 关 | 已收录功能发布陈述 |
-| 每日计划摘要 | 关 | PT 每日 18:00 后当日摘要 |
-
-`POST /api/subscribe` 接收标准 PushSubscription 加 `preferences`。偏好持久保存到订阅 JSON；`POST /api/preferences` 用 `{endpoint}` 读取，用 `{endpoint,preferences}` 更新。只接受已知布尔字段。恢复页面时会从服务器读取，不依赖 localStorage。
-
-入队按偏好筛选，实际投递前再次检查最新偏好，避免关闭类别后仍发送旧队列。推送给外部服务时仅发送协议字段，不传偏好。失效订阅 404/410 清理，其他失败持久化重试。至少一次交付，不承诺严格一次；客户端用 tag 合并重复展示。
-
-每日摘要在计划周期内 **PT 18:00 后每分钟检查**，只汇总当日，稳定 ID `digest-YYYY-MM-DD` 防重复。如果程序当天 18:00 后才启动，则静默记下当天，不补发停机期间摘要；次日正常发送。没有历史天数补发，前一 PT 日期遗留的摘要任务也不迟发。摘要只是汇总，不是完成凭据。
-
-## 社区观测源
-
-`OBSERVATION_SOURCES` 默认留空，程序不内置抓取任何第三方站点。部署者可填写逗号分隔的可信 HTTPS JSON 地址：
-
-```json
-{"observations":[{"id":"day18-20261023T0100Z","at":"2026-10-23T01:00:00Z","url":"https://example.test/record","note":"说明文字","scope":"Codex 用户"}]}
-```
-
-仅完整来源链接、有效时间、最近 7 天、非明显未来的数据入库。按记录 ID 去重；多个接口转发相同来源链接、时间和适用范围的观测也不重复提醒。每条记录保存收录接口地址。正常每 5 分钟检查，单个源失败独立退避至最多约 30 分钟，并遵守更长的 `Retry-After`；不并发重叠检查。一个源失败不影响其他源；界面和 API 均显示每条源的检查结果、最近成功时间和错误。观测代表公共追踪的报告，不是官方确认，也不是每个用户都已到账的保证。
-
-未配置接口时，通知偏好旁会显示「未配置观测源，当前不会产生新的社区观测提醒」。勾选只是保存偏好，不会自动接入数据源；已有历史观测仍保留。X 官方 API 目前同样只支持在 `.env` 配置 `X_BEARER_TOKEN`，没有网页登录 X 或读取 Cookies 的界面；本次未新增登录操作。
-
-## 开源分发与可选云部署
-
-默认分发方式是每个人自行下载、克隆并运行，不需要仓库作者提供公共服务器。系统用户数据目录、`.runtime/`、`.env`、用户订阅和日志都留在各自电脑，不上传 GitHub。
-
-想让电脑关闭后仍持续监测的高级用户，可自行部署长期运行的 Node 服务：复制 `.env.example` 为 `.env`，运行 `npm run keys` 并填写两项 VAPID key、维护者邮箱、外部 HTTPS `PUBLIC_ORIGIN`，用 `npm start` 或 `docker compose up -d --build` 启动。官方实时流另需有权限的 X 应用 Token。密钥只留在自己的部署环境，不能共享到仓库。GitHub Pages 无法运行这些后台功能。
-
-云端不暴露本机桌面控制接口。Web Push 受系统、浏览器后台、联网和推送服务可达性影响；部分移动系统需添加到主屏幕。云端接入仍需单独实测。
-
-发布前：
-- 检查 `.gitignore`，不提交 `.env`、旧版 `data/`、`node_modules/`、凭证或用户订阅。
-- 先本地测试，再用维护者自己的设备验收真实 X / HTTPS / 关闭页面后的通知。
-- 若自行将实例开放给别人，需加反向代理限流、订阅限制及数据备份；费用由该实例部署者承担。
-
-## 验证
-
-```sh
-npm test
-npm install --no-save playwright
-npm run test:ui
-npm run test:festival
-npm run test:local
-```
-
-浏览器 QA 默认使用 Windows Chrome；`CHROME_PATH` 可为主 QA 指定路径；`QA_BASE_URL` 可指定测试服务地址，例如 Git Bash：
-
-```sh
-QA_BASE_URL=http://localhost:8790 npm run test:ui
-QA_BASE_URL=http://localhost:8790 npm run test:festival
-```
-
-浏览器截图统一输出到 `.artifacts/qa/`，不再散落根目录。`test:local` 自带内存测试服务；`test:ui` 需要固定演示历史和断开实时源的测试服务，`test:festival` 检查 `QA_BASE_URL` 指定的运行实例。
-
-现有 QA 已扩展检查：默认重置视图、三视图切换、28 天网格、数据表、计数、双时区、声明来源、偏好与筛选独立、金色狂欢及彩屑重播、当天 23:59 保留庆祝、人物五阶段、手机/平板无水平溢出、减少动态设置。Node 测试包含日期/DST、通知偏好入库与投递、计划/完成证据分离、实时混合主题与回复链。
-
-真实 X 连接和公网端到端通知仍需配置凭证后由部署者验收，不能把模拟测试通过当作公网验收完成。
-
-## 图片版权与来源
-
-新提供的两张截图只用来参考信息架构及读取待核实线索，**未复制到 public、不嵌入截图、不复刻第三方完整图片或品牌标题**。计划网格使用本项目自己的 HTML/CSS 和经原帖核对的文字摘要。
-
-现有三张圣像/人物图片由需求方提供，继续保留。MIT 只覆盖代码，不代表已经取得图片公开分发授权。**向 GitHub 公开上传前，维护者必须确认图片使用权；无法确认时请替换或移除这些素材。** 详见 `public/assets/README.md`。
-
-## 资料
-
-- X Filtered Stream：https://docs.x.com/x-api/posts/filtered-stream/introduction
-- Web Push：https://developer.mozilla.org/en-US/docs/Web/API/Push_API
-- 计划声明：https://x.com/thsottiaux/status/2106845241357824205
-- 原帖索引参考：https://codexy.fyi/ （索引定位后逐条核对，不直接作为完成证据）
-
-独立社区工具，非 OpenAI 或 X 官方产品。代码许可证：MIT。
+独立社区工具，非 OpenAI 或 X 官方产品。代码许可证：MIT；图片权利另见素材说明。
