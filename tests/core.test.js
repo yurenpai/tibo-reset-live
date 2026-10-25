@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {classify,validSubscription} from './classify.js';
-import {Store} from './store.js';
+import {classify,validSubscription} from '../src/classify.js';
+import {Store} from '../src/store.js';
 test('否定、玩笑及脱离上下文的 Done 不误报',()=>{
  for(const text of ['No reset today','I bought a reset button','Done','reset my password'])assert.equal(classify({text}),null);
 });

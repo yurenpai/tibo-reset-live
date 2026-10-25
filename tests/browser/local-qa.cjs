@@ -1,15 +1,17 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+const path=require('node:path');
+const projectRoot=path.resolve(__dirname,'../..');
 (async()=>{
- const {Store}=await import('./store.js');
- const {DesktopNotifications}=await import('./desktop.js');
- const {createApp,seedHistoricalEvents}=await import('./server.js');
- const {PublicFeedMonitor}=await import('./public-feed.js');
+ const {Store}=await import('../../src/store.js');
+ const {DesktopNotifications}=await import('../../src/desktop.js');
+ const {createApp,seedHistoricalEvents}=await import('../../src/server.js');
+ const {PublicFeedMonitor}=await import('../../src/public-feed.js');
  const store=new Store(':memory:');const sent=[];
  const now=Date.parse('2026-10-23T09:30:00Z');
- const history=JSON.parse(fs.readFileSync('history.json','utf8'));
- const planDoc=JSON.parse(fs.readFileSync('plan-data.json','utf8'));
+ const history=JSON.parse(fs.readFileSync(path.join(projectRoot,'resources/history.json'),'utf8'));
+ const planDoc=JSON.parse(fs.readFileSync(path.join(projectRoot,'resources/plan-data.json'),'utf8'));
  seedHistoricalEvents(store,history,planDoc);
  const desktop=new DesktopNotifications(store,{send:async message=>sent.push(message),now:()=>now});
  let rows=[{id:'3000000000000000000',url:'https://x.com/thsottiaux/status/3000000000000000000',text:'Day 19/ It is reset day today.',at:new Date(now-2000).toISOString()}];

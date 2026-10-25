@@ -7,11 +7,14 @@ if ($ledger.root -ne $projectRoot) { throw 'Recorded workspace does not match th
 $process = Get-Process -Id $ledger.pid -ErrorAction SilentlyContinue
 if ($process) {
     $info = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $ledger.pid)
-    $entry = Join-Path $projectRoot 'local.js'
-    $supervisor = Join-Path $projectRoot 'local-service.js'
-    if ($process.ProcessName -ne 'node' -or $process.StartTime.ToUniversalTime().Ticks.ToString() -ne $ledger.startedTicks -or (-not $info.CommandLine.Contains($entry) -and -not $info.CommandLine.Contains($supervisor))) { throw 'Process identity does not match. Nothing was stopped.' }
-    $children = @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $ledger.pid) | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine.Contains($entry) })
-    if ($info.CommandLine.Contains($supervisor)) {
+    # 更新代码时也能停止重构前仍在运行的实例。
+    $entries = @((Join-Path $projectRoot 'src\local.js'), (Join-Path $projectRoot 'local.js'))
+    $supervisors = @((Join-Path $projectRoot 'src\local-service.js'), (Join-Path $projectRoot 'local-service.js'))
+    $isWorker = @($entries | Where-Object { $info.CommandLine.Contains($_) }).Count -gt 0
+    $isSupervisor = @($supervisors | Where-Object { $info.CommandLine.Contains($_) }).Count -gt 0
+    if ($process.ProcessName -ne 'node' -or $process.StartTime.ToUniversalTime().Ticks.ToString() -ne $ledger.startedTicks -or (-not $isWorker -and -not $isSupervisor)) { throw 'Process identity does not match. Nothing was stopped.' }
+    $children = @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $ledger.pid) | Where-Object { $candidate=$_; $candidate.Name -eq 'node.exe' -and @($entries | Where-Object { $candidate.CommandLine.Contains($_) }).Count -gt 0 })
+    if ($isSupervisor) {
         $service = Get-Content -LiteralPath (Join-Path $projectRoot 'data\local-service.json') -Raw | ConvertFrom-Json
         if ($service.supervisorPid -ne $ledger.pid -or -not $service.token) { throw 'Supervisor identity does not match. The process ledger was preserved.' }
         @{supervisorPid=[int]$ledger.pid; token=$service.token} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $projectRoot 'data\local-stop.json') -Encoding UTF8

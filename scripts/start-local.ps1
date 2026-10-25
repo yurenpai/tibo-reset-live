@@ -5,7 +5,7 @@ $runtimeDir = Join-Path $projectRoot '.runtime'
 $dataDir = Join-Path $projectRoot 'data'
 New-Item -ItemType Directory -Force -Path $runtimeDir, $dataDir | Out-Null
 $ledgerPath = Join-Path $dataDir 'local-instance.json'
-$localEntry = Join-Path $projectRoot 'local-service.js'
+$localEntry = Join-Path $projectRoot 'src\local-service.js'
 $sha = [Security.Cryptography.SHA256]::Create()
 $mutexName = 'Local\TiboReset-' + ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($projectRoot))).Replace('-','').Substring(0,16))
 $mutex = New-Object Threading.Mutex($false, $mutexName)

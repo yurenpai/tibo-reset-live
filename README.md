@@ -26,7 +26,7 @@
 ## 当前状态
 
 - 本地免登录源已实际读取验证，包含主帖、回复、原文、UTC 时间和父帖 ID；系统通知可在页面点击测试。真实 X 长连接与公网 Web Push 尚未完成端到端验收。
-- `history.json` 保留原有 10 条重置历史；`plan-data.json` 独立维护计划声明、18 个已绑定原帖的计划日及核实发布时间。历史回填不发通知。
+- `resources/history.json` 保留原有 10 条重置历史；`resources/plan-data.json` 独立维护计划声明、18 个已绑定原帖的计划日及核实发布时间。历史回填不发通知。
 - 未配置 X 时自动使用公共源；公共源故障时明确显示异常，继续保留历史，不伪装为实时连接。
 - Node.js 24.15+（24 LTS）或 26+；Windows 启动器可自动下载并校验便携 Node 24，无需管理员安装。SQLite、日志和偏好位于 `data/`，不可上传。
 
@@ -59,6 +59,27 @@ npm run local
 
 Linux/macOS 可用 `npm run local`（通知分别依赖桌面会话与 `notify-send` / 系统通知）；一键脚本当前针对 Windows 验证。高级用户配置 `.env`：`SOURCE_MODE=auto`（默认）会在有 `X_BEARER_TOKEN` 时选择官方源，否则选择公共源；`public` 固定使用公共源，`api` 只用官方接口。
 
+## 项目目录
+
+普通使用者从根目录双击启动即可，开发文件按用途归档：
+
+```text
+tibo-reset-live/
+├─ src/                 后台、消息分类、通知与数据库代码
+├─ public/              网页、样式与人物图片
+├─ resources/           项目自带的历史记录与 28 天计划
+├─ tests/               自动测试（browser/ 内为浏览器检查）
+├─ scripts/             Windows 启动、停止与自启动脚本
+├─ docs/                文档与展示截图
+├─ README.md            使用说明
+├─ package.json         运行命令与依赖
+├─ start.cmd            双击启动
+├─ start-service.cmd    启动并设置登录自启动
+└─ stop.cmd             停止后台
+```
+
+`.env.example`、Docker 配置及登录自启动开关也保留在根目录。运行后生成的 `data/`、`.runtime/`、`node_modules/` 和 `.artifacts/` 均不提交 GitHub。`resources/` 是随项目分发的资料，个人新增记录和提醒设置仍保存在根目录的 `data/calendar.sqlite`，升级时请保留 `data/`。
+
 ## 免登录公共数据源
 
 默认地址：[codex-reset.com/api/feed](https://codex-reset.com/api/feed)。这是第三方公开收录接口，程序只读其 `tweets` 内的原文、发布时间、账号和父帖关系；不采用它的 `confirmed`、信号评分或“已到账”判断。通过本项目自己的分类器区分功能、预告、完成和发卡，并保留原帖与收录源链接。收录的原文未经本项目独立核验，不等于直接通过官方 API 验证。
@@ -90,9 +111,9 @@ https://x.com/thsottiaux/status/2106845241357824205
 
 Tibo 声明未来 28 天每天发布明显改进或全面重置。**这只是计划声明，不是每日完成的保证，更不是未来重置已到账的凭据。**
 
-- `plan-data.json` 存储 `day`、`date`、`plannedType`（feature/reset/feature_reset/upcoming）、`status`（planned/reported/confirmed/observed/pending）、`title`、`summary`、`sourceUrl`，有真实原帖时另带 `sourceAt`。
+- `resources/plan-data.json` 存储 `day`、`date`、`plannedType`（feature/reset/feature_reset/upcoming）、`status`（planned/reported/confirmed/observed/pending）、`title`、`summary`、`sourceUrl`，有真实原帖时另带 `sourceAt`。
 - 回填功能原帖链接经公开索引定位，再通过 FxTwitter 公共镜像核对作者、文本与发布时间；每条显示 Tibo 原帖，不把截图内容直接当作完成数据。运行时来源可选公共 JSON 或官方 API。
-- `plan.js` 把条目和实时事件合并成 28 日骨架；未来或过去未收录日期都标为“待观察”，不是“当天没有更新”。未来时间戳不参与已记录统计。
+- `src/plan.js` 把条目和实时事件合并成 28 日骨架；未来或过去未收录日期都标为“待观察”，不是“当天没有更新”。未来时间戳不参与已记录统计。
 - `plannedType` 表示内容类型，颜色不表示完成：蓝色功能、金色重置、蓝金双色混合、灰色待观察；黄色边框是 PT 今天。每格还有文字标签，提供可展开数据表，不只靠颜色区分。
 - **已进行 N/28 天**是 PT 日历时间进度（含已进入的今天），不是完成率；剩余天数不含今天。
 - **已确认重置次数**只算官方完成证据，按计划日去重，不含发卡、预告、社区观测；仅社区观测另行显示。功能改进按有原帖的功能计划日计数，同日多项只算一天。不能把参考图的数字当作本项目的验证结果。
@@ -180,17 +201,19 @@ Tibo 声明未来 28 天每天发布明显改进或全面重置。**这只是计
 ```sh
 npm test
 npm install --no-save playwright
-node qa.cjs
-node festival-qa.cjs
-node local-qa.cjs
+npm run test:ui
+npm run test:festival
+npm run test:local
 ```
 
 浏览器 QA 默认使用 Windows Chrome；`CHROME_PATH` 可为主 QA 指定路径；`QA_BASE_URL` 可指定测试服务地址，例如 Git Bash：
 
 ```sh
-QA_BASE_URL=http://localhost:8790 node qa.cjs
-QA_BASE_URL=http://localhost:8790 node festival-qa.cjs
+QA_BASE_URL=http://localhost:8790 npm run test:ui
+QA_BASE_URL=http://localhost:8790 npm run test:festival
 ```
+
+浏览器截图统一输出到 `.artifacts/qa/`，不再散落根目录。`test:local` 自带内存测试服务；`test:ui` 需要固定演示历史和断开实时源的测试服务，`test:festival` 检查 `QA_BASE_URL` 指定的运行实例。
 
 现有 QA 已扩展检查：默认重置视图、三视图切换、28 天网格、数据表、计数、双时区、声明来源、偏好与筛选独立、金色狂欢及彩屑重播、当天 23:59 保留庆祝、人物五阶段、手机/平板无水平溢出、减少动态设置。Node 测试包含日期/DST、通知偏好入库与投递、计划/完成证据分离、实时混合主题与回复链。
 

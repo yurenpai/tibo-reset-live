@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {resetAppearance,DAY_MS} from './public/theme.js';
+import {resetAppearance,DAY_MS} from '../public/theme.js';
 const now=Date.parse('2026-10-23T12:00:00Z');
 test('只有确认重置触发狂欢，预告和发卡不重置人物',()=>{
  const events=[{kind:'confirmed',at:new Date(now-3*DAY_MS).toISOString()},{kind:'scheduled',at:new Date(now).toISOString()},{kind:'banked',at:new Date(now).toISOString()}];

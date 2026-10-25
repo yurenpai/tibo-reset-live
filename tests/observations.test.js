@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parseObservations,toObservedEvent,Observations} from './observations.js';
-import {Store} from './store.js';
+import {parseObservations,toObservedEvent,Observations} from '../src/observations.js';
+import {Store} from '../src/store.js';
 
 const now=Date.parse('2026-10-23T04:00:00Z');
 const base={id:'day18-20261023T0100Z',at:'2026-10-23T01:00:00Z',url:'https://example.test/tracker',note:'公共追踪记录观测到重置。',scope:'Codex 用户'};

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {deriveSchedule} from './schedule.js';
+import {deriveSchedule} from '../src/schedule.js';
 
 const PST_REPLY='Lands tomorrow before 10am PST.';
 

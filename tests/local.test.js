@@ -1,15 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {Store} from './store.js';
-import {PublicFeedMonitor,parsePublicFeed} from './public-feed.js';
-import {DesktopNotifications} from './desktop.js';
-import {Monitor} from './monitor.js';
-import {createApp,seedHistoricalEvents} from './server.js';
-import {classify} from './classify.js';
+import {Store} from '../src/store.js';
+import {PublicFeedMonitor,parsePublicFeed} from '../src/public-feed.js';
+import {DesktopNotifications} from '../src/desktop.js';
+import {Monitor} from '../src/monitor.js';
+import {createApp,seedHistoricalEvents} from '../src/server.js';
+import {classify} from '../src/classify.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {resetAppearance} from './public/theme.js';
+import {resetAppearance} from '../public/theme.js';
 
 const now=Date.parse('2026-10-24T00:00:00Z');
 const item=(id,text,parent)=>({id,url:`https://x.com/thsottiaux/status/${id}`,text,at:new Date(now-1000).toISOString(),is_reply:!!parent,in_reply_to_tweet_id:parent});
@@ -101,6 +101,9 @@ test('本机通知接口需要同源，云部署不暴露桌面控制，测试�
     assert.equal(desktop.settings().enabled,true);
     assert.equal((await post('/api/local/test-notification',{})).status,200);assert.equal(s.events().length,0);
     assert.equal((await (await fetch(base+'/api/health')).json()).local,true);
+    for(const asset of ['/','/app.js','/style.css','/assets/saint-tibo-card.jpg']){
+      const response=await fetch(base+asset);assert.equal(response.status,200,`静态资源路径失效：${asset}`);await response.arrayBuffer();
+    }
   }finally{await new Promise(r=>server.close(r));s.close();}
 });
 

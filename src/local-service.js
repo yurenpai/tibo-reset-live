@@ -3,9 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
+import {projectRoot} from './paths.js';
 
 // 用户级后台守护，无需管理员或 Windows 服务安装；启动脚本负责单实例及健康检查。
-export function runLocalService({root=path.dirname(fileURLToPath(import.meta.url)),entry=path.join(root,'local.js'),restartDelay=1000}={}){
+export function runLocalService({root=projectRoot,entry=path.join(root,'src','local.js'),restartDelay=1000}={}){
 const statePath=path.join(root,'data','local-service.json');
 const stopPath=path.join(root,'data','local-stop.json');
 const token=randomUUID();

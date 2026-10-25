@@ -1,15 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { Store } from './store.js';
-import { Monitor } from './monitor.js';
-import { classifyFeature, classifyEvents } from './classify.js';
-import { toObservedEvent } from './observations.js';
-import { DEFAULT_PREFERENCES } from './preferences.js';
-import { createApp, DailyDigest, deliverPending, seedHistoricalEvents } from './server.js';
-import { resetAppearance } from './public/theme.js';
+import { Store } from '../src/store.js';
+import { Monitor } from '../src/monitor.js';
+import { classifyFeature, classifyEvents } from '../src/classify.js';
+import { toObservedEvent } from '../src/observations.js';
+import { DEFAULT_PREFERENCES } from '../src/preferences.js';
+import { createApp, DailyDigest, deliverPending, seedHistoricalEvents } from '../src/server.js';
+import { resetAppearance } from '../public/theme.js';
 
-const planDoc=JSON.parse(fs.readFileSync(new URL('./plan-data.json',import.meta.url),'utf8'));
+const planDoc=JSON.parse(fs.readFileSync(new URL('../resources/plan-data.json',import.meta.url),'utf8'));
 const post=(id,text,reply)=>({id,author_id:'tibo',created_at:'2026-10-23T04:46:19Z',text,...(reply?{referenced_tweets:[{type:'replied_to',id:reply}]}:{})});
 const subscriber=(endpoint,preferences)=>({endpoint,keys:{p256dh:'a'.repeat(87),auth:'a'.repeat(22)},preferences});
 

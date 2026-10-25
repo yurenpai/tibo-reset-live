@@ -6,4 +6,4 @@ COPY . .
 RUN mkdir -p data && chown -R node:node /app
 USER node
 EXPOSE 8788
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]

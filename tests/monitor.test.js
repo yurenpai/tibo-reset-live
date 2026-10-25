@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {Monitor,mergeFollowUp} from './monitor.js';
-import {Store} from './store.js';
+import {Monitor,mergeFollowUp} from '../src/monitor.js';
+import {Store} from '../src/store.js';
 test('只处理指定作者，回复确认先解析原始重置上下文，补漏不会重复入队',async()=>{
  const store=new Store(':memory:');const updates=[];const m=new Monitor(store,e=>updates.push(e),{});m.userId='tibo';
  store.subscribe({endpoint:'browser',keys:{}});

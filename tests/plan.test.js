@@ -1,12 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {planCalendar,dayOf,planProgress,buildPlan,filterEvents} from './plan.js';
-import {dateInZone,timeInZone} from './public/content.js';
-import {normalizePreferences,wantsNotification,DEFAULT_PREFERENCES} from './preferences.js';
-import {Store} from './store.js';
-import {resetAppearance,DAY_MS} from './public/theme.js';
-const doc=JSON.parse(fs.readFileSync(new URL('./plan-data.json',import.meta.url),'utf8'));
+import {planCalendar,dayOf,planProgress,buildPlan,filterEvents} from '../src/plan.js';
+import {dateInZone,timeInZone} from '../public/content.js';
+import {normalizePreferences,wantsNotification,DEFAULT_PREFERENCES} from '../src/preferences.js';
+import {Store} from '../src/store.js';
+import {resetAppearance,DAY_MS} from '../public/theme.js';
+const doc=JSON.parse(fs.readFileSync(new URL('../resources/plan-data.json',import.meta.url),'utf8'));
 const now=Date.parse('2026-10-23T12:00:00Z');
 
 test('28 个连续 PT 计划日跨月，终点 11 月 1 日包含 DST 的 25 小时',()=>{

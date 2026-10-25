@@ -1,5 +1,6 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
+const artifact=require('./artifacts.cjs');
 const base=process.env.QA_BASE_URL||'http://localhost:8788';
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
@@ -33,7 +34,7 @@ const base=process.env.QA_BASE_URL||'http://localhost:8788';
  await page.locator('#today').click();assert(await page.locator('#announcement-detail').isVisible());
  assert(await page.locator('body').evaluate(e=>e.classList.contains('celebrating')));
  await page.clock.setFixedTime(new Date('2026-10-23T09:30:00Z'));await page.locator('#today').click();
- await page.screenshot({path:'preview.png',fullPage:true});
+ await page.screenshot({path:artifact('preview.png'),fullPage:true});
  // 计划视图：28 个日期、准确计数、PT 归日、独立的重置证据、原帖声明。
  await page.locator('[data-view=plan]').click();
  assert(await page.locator('#plan-panel').isVisible());assert(await page.locator('.workspace').isHidden());
@@ -51,7 +52,7 @@ const base=process.env.QA_BASE_URL||'http://localhost:8788';
  await page.locator('.plan-table-wrap summary').click();
  await page.locator('.plan-day').nth(17).click();
  await page.locator('.content-views').scrollIntoViewIfNeeded();
- await page.screenshot({path:'plan-preview.png',fullPage:true});
+ await page.screenshot({path:artifact('plan-preview.png'),fullPage:true});
  // 页面筛选不改变通知复选框。
  await page.locator('.notification-settings summary').click();
  assert(await page.locator('input[name=confirmed]').isChecked());assert(await page.locator('input[name=observed]').isChecked());
@@ -72,8 +73,8 @@ const base=process.env.QA_BASE_URL||'http://localhost:8788';
  }
  await page.setViewportSize({width:390,height:844});await page.locator('[data-view=plan]').click();
  assert(await page.locator('#tibo-mascot').evaluate(e=>e.classList.contains('collapsed')));
- await page.screenshot({path:'plan-mobile-preview.png',fullPage:true});
- await page.locator('[data-view=reset]').click();await page.screenshot({path:'preview-mobile.png',fullPage:true});
+ await page.screenshot({path:artifact('plan-mobile-preview.png'),fullPage:true});
+ await page.locator('[data-view=reset]').click();await page.screenshot({path:artifact('preview-mobile.png'),fullPage:true});
  assert.deepEqual(errors,[]);
  const response=await page.request.post(base+'/api/subscribe',{headers:{Origin:'https://evil.invalid'},data:{}});assert.equal(response.status(),403);
  console.log('通过：原重置月历、月份边界、三视图、28 天网格/来源/双时区/统计、独立通知偏好、轻庆祝、桌面和手机布局、来源隔离');

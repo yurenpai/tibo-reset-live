@@ -10,7 +10,7 @@ test('本机守护恢复异常退出的工作进程，忽略旧停止请求，�
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'tibo-service-'));
   const entry=path.join(root,'worker.cjs');
   fs.writeFileSync(entry,'setInterval(()=>{},1000);');
-  const moduleUrl=new URL('./local-service.js',import.meta.url).href;
+  const moduleUrl=new URL('../src/local-service.js',import.meta.url).href;
   const code=`import {runLocalService} from ${JSON.stringify(moduleUrl)};runLocalService(${JSON.stringify({root,entry,restartDelay:50})});`;
   const service=spawn(process.execPath,['--input-type=module','-e',code],{stdio:'ignore',windowsHide:true});
   const exited=new Promise(resolve=>service.once('exit',resolve));

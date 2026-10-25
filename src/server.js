@@ -10,11 +10,11 @@ import { validSubscription, normalizeEvent } from './classify.js';
 import { normalizePreferences, wantsNotification, TOPICS } from './preferences.js';
 import { buildPlan, dayOf } from './plan.js';
 import { partsAt, PACIFIC_ZONE } from './schedule.js';
-import { dateInZone } from './public/content.js';
+import { dateInZone } from '../public/content.js';
 import { PublicFeedMonitor } from './public-feed.js';
 import { DesktopNotifications } from './desktop.js';
 
-const root=path.dirname(fileURLToPath(import.meta.url));
+import {projectRoot as root} from './paths.js';
 const ptDate = now => {
   const p=partsAt(new Date(now),PACIFIC_ZONE);
   return `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
@@ -153,8 +153,8 @@ export function createApp({store,history,planDoc,monitor,observationSources=[],p
 export function startServer(env=process.env) {
   fs.mkdirSync(path.join(root,'data'),{recursive:true});
   const store=new Store(path.join(root,'data','calendar.sqlite'));
-  const history=JSON.parse(fs.readFileSync(path.join(root,'history.json'),'utf8'));
-  const planDoc=JSON.parse(fs.readFileSync(path.join(root,'plan-data.json'),'utf8'));
+  const history=JSON.parse(fs.readFileSync(path.join(root,'resources','history.json'),'utf8'));
+  const planDoc=JSON.parse(fs.readFileSync(path.join(root,'resources','plan-data.json'),'utf8'));
   seedHistoricalEvents(store,history,planDoc);
   const origin=env.PUBLIC_ORIGIN||'http://localhost:8788';
   const pushReady=!!(env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY);

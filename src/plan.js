@@ -1,7 +1,7 @@
 // 计划按 PT 日期归属，事件本身仍保存 UTC 时间，详情同时显示北京时间。
 import { wallTimeToUtc, PACIFIC_ZONE } from './schedule.js';
-import { dateInZone } from './public/content.js';
-export { filterEvents } from './public/content.js';
+import { dateInZone } from '../public/content.js';
+export { filterEvents } from '../public/content.js';
 export const PLAN_TYPES=['feature','reset','feature_reset','upcoming'];
 export const PLAN_STATUSES=['planned','reported','confirmed','observed','pending'];
 const pad=n=>String(n).padStart(2,'0');
