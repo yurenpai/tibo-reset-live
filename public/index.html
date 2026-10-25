@@ -6,7 +6,27 @@
 <div class="utility-panels">
 <section class="source-status" aria-label="数据与后台状态"><details><summary>数据来源与后台状态 <span id="source-summary">正在检查</span></summary><p id="source-description"></p><p id="source-times"></p><p id="source-error" role="status"></p>
 <p id="source-route-note"></p><details class="source-details"><summary>逐项来源状态 <span id="source-counts"></span></summary><ul id="source-list" aria-label="各数据源状态"></ul></details>
-<p class="source-setup-help">高级接入：当前没有网页登录 X 的入口。X 官方 API 需在本机 .env 配置应用密钥；备用帖子接口和社区接口也需配置后重启后台。</p>
+<details id="source-config-panel" class="source-config" hidden><summary>配置数据来源 · 免登录 / 官方 API</summary>
+<p>保存后立即切换并在本机持久保存。测试连接只验证响应，不收录事件或发送提醒。</p>
+<form id="source-config-form" autocomplete="off">
+ <label for="source-mode">连接模式</label><select id="source-mode"><option value="public">免登录 · 公共帖子源（推荐）</option><option value="api">官方 API · 自备应用 Token</option></select>
+ <fieldset id="source-public-fields"><legend>公共帖子接口</legend>
+ <label for="source-primary">主源地址</label><input id="source-primary" type="url" maxlength="500" required placeholder="https://example.com/api/feed">
+ <label for="source-backup-1">备用源 1（可留空）</label><input id="source-backup-1" type="url" maxlength="500" placeholder="https://example.com/api/feed">
+ <label for="source-backup-2">备用源 2（可留空）</label><input id="source-backup-2" type="url" maxlength="500" placeholder="https://example.com/api/feed">
+ <p>填写与主源相同结构、经过核实的 HTTPS JSON 接口，不是 X 主页或普通网页。主源故障才尝试备用；默认没有配置备用。</p></fieldset>
+ <fieldset id="source-api-fields" hidden><legend>X 官方 API 应用密钥</legend>
+ <p>这里配置 Bearer Token，不是登录 X 账号；需要自备有相应 API 权限的开发者应用。</p>
+ <label for="source-token">Bearer Token</label><input id="source-token" type="password" maxlength="2048" autocomplete="new-password" spellcheck="false" placeholder="留空保留已配置的 Token" aria-describedby="source-token-state">
+ </fieldset>
+ <p id="source-token-state"></p><label class="source-check"><input id="source-clear-token" type="checkbox">清除当前 Token（需在免登录模式下保存）</label>
+ <label for="source-community">社区观测接口（可留空，每行一个，最多 5 个）</label><textarea id="source-community" rows="3" placeholder="https://example.com/observations"></textarea>
+ <p>只接受提供 observations JSON 的来源；留空不接入新观测。不会自动检测你个人账号的额度。</p>
+ <p>Token 仅存于本机用户数据目录，不回显、不写入浏览器存储；本机配置文件包含明文密钥，请勿分享。测试官方 API 账号查询成功不代表已具备实时流权限。</p>
+ <div class="source-config-actions"><button id="source-config-save" type="submit">保存并立即应用</button><button id="source-config-test" type="button">测试连接</button><button id="source-config-reset" type="button">恢复默认草稿</button></div>
+ <p id="source-config-status" role="status" aria-live="polite"></p><ul id="source-config-results" aria-label="连接测试结果"></ul>
+</form></details>
+<p id="source-setup-help" class="source-setup-help">本机模式可展开「配置数据来源」设置地址和 API Token；云部署仍使用 .env。不提供 X 账号网页登录。</p>
 <form id="source-frequency-form" hidden>
  <label for="source-frequency">自动检查频率</label>
  <select id="source-frequency" name="pollMode" aria-describedby="source-frequency-help"><option value="smart">智能检查 · 平时约 5 分钟，预告后约 2 分钟</option><option value="fast">快速 · 约 2 分钟</option><option value="standard">标准 · 约 5 分钟</option><option value="saver">省流 · 约 15 分钟</option></select>

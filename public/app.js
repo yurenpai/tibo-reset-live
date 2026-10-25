@@ -2,6 +2,7 @@ import { resetAppearance } from './theme.js';
 import { filterEvents, timeInZone } from './content.js';
 import { renderPlan } from './plan-ui.js';
 import { renderSourceStatus } from './source-status.js';
+import { initSourceConfig,renderSourceConfig } from './source-config.js';
 const navigation=new URLSearchParams(location.search);
 let contentView=['all','plan'].includes(navigation.get('view'))?navigation.get('view'):'reset';
 const $=s=>document.querySelector(s);
@@ -119,6 +120,7 @@ function render(){
  $('#source-error').textContent=(data.status.error||'')+(publicMode&&data.status.failureCount>0?` · 连续 ${data.status.failureCount} 次检查异常，已自动延长检查间隔。`:'');
  const obs=data.observations;
  renderSourceStatus(data);
+ renderSourceConfig(data);
  $('#checked').textContent=(data.lastCheck?'最近检查：'+bjt.format(new Date(data.lastCheck)):'历史核对：'+bjt.format(new Date(data.historyCheckedAt))+' · 实时源未接入')+
   (obs?.enabled?(obs.checkedAt?' · 观测源 '+bjt.format(new Date(obs.checkedAt)):' · 观测源等待首次检查'):' · 未配置社区观测源');
  $('#subscribe').disabled=!data.desktop&&!data.pushReady;
@@ -141,6 +143,7 @@ function render(){
  if(focusedDate)document.querySelector(`[data-date="${focusedDate}"]`)?.focus({preventScroll:true});
 }
 async function refresh(){try{const r=await fetch('/api/calendar',{cache:'no-store'});if(!r.ok)throw Error();data=await r.json();render();}catch{$('#connection').textContent='○ 连接中断';$('#message').textContent='无法读取更新，当前显示保留的记录。';}}
+initSourceConfig(refresh);
 // 日历只覆盖“有记录的最早月份”到“当前月份”。更早的月份不存在可展示的内容，翻过去只会是空洞。
 function monthBounds(){
  const keys=data.events.map(e=>dateKey(e.at)).sort();

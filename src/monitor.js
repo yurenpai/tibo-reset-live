@@ -20,13 +20,14 @@ export function mergeFollowUp(parent, follow) {
 }
 
 export class Monitor {
-  constructor(store,onEvent,env=process.env) {
+  constructor(store,onEvent,env=process.env,{fetchImpl=fetch}={}) {
     this.store=store;this.onEvent=onEvent;this.token=env.X_BEARER_TOKEN;
     this.handle=env.X_HANDLE||'thsottiaux';this.status={configured:!!this.token,connected:false,lastReceived:null,error:null};
-    this.chain=Promise.resolve();this.stopped=false;
+    this.chain=Promise.resolve();this.stopped=false;this.lifecycle=new AbortController();this.fetchImpl=fetchImpl;
   }
   async api(route,options={}) {
-    const r=await fetch('https://api.x.com/2/'+route,{...options,headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000)});
+    this.lifecycle.signal.throwIfAborted();
+    const r=await this.fetchImpl('https://api.x.com/2/'+route,{...options,headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},signal:AbortSignal.any([this.lifecycle.signal,AbortSignal.timeout(20000)])});
     if(!r.ok) { const error=new Error('X API HTTP '+r.status);error.status=r.status;throw error; }
     return r.json();
   }
@@ -49,7 +50,7 @@ export class Monitor {
     return null;
   }
   async process(p,notify,depth=0) {
-    if(p.author_id!==this.userId||!p.created_at||this.store.post(p.id))return;
+    if(this.stopped||p.author_id!==this.userId||!p.created_at||this.store.post(p.id))return;
     const reply=p.referenced_tweets?.find(r=>r.type==='replied_to')?.id;
     if(reply&&!this.store.post(reply)&&!this.resolveParentEvent(reply)&&depth<32){
       try {
@@ -60,6 +61,7 @@ export class Monitor {
         if(![403,404].includes(error.status))throw error;
       }
     }
+    if(this.stopped)return;
     const parentEvent=reply?this.resolveParentEvent(reply):null;
     const results=classifyEvents(p,parentEvent);
     const schedule=deriveSchedule(p.text,p.created_at)||{};
@@ -77,45 +79,57 @@ export class Monitor {
     this.store.savePost(p);
   }
   async catchup(baseline=false) {
+    if(this.stopped)return;
     let next;const posts=[];const cursor=this.store.get('cursor');
     do {
       const q=new URLSearchParams({'tweet.fields':'created_at,author_id,referenced_tweets',max_results:baseline?'10':'100'});
       if(cursor&&!baseline)q.set('since_id',cursor);
       if(next)q.set('pagination_token',next);
       const r=await this.api(`users/${this.userId}/tweets?${q}`);
+      if(this.stopped)return;
       posts.push(...r.data||[]);next=baseline?null:r.meta?.next_token;
     }while(next);
     posts.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:1);
     let failed=false;
     for(const p of posts){try{await this.enqueue(p,!baseline);}catch(error){failed=true;this.status.error=error.message;}}
+    if(this.stopped)return;
     // 后续帖子仍处理；失败未保存的帖下轮重试，游标暂不前移。
     if(posts.length&&!failed)this.store.set('cursor',posts.at(-1).id);
     this.store.set('lastCheck',new Date().toISOString());
   }
   async start() {
-    if(!this.token)return;
+    if(!this.token||this.stopped)return;
     try {
       const u=await this.api('users/by/username/'+encodeURIComponent(this.handle));this.userId=u.data.id;
+      if(this.stopped)return;
       await this.catchup(!this.store.get('cursor'));
+      if(this.stopped)return;
       // 以账号为过滤条件，保留回复；“Done”等完成确认常出现在回复中。
       const value=`from:${this.handle} -is:retweet`;
       const rules=await this.api('tweets/search/stream/rules');
+      if(this.stopped)return;
       if(!rules.data?.some(r=>r.value===value))await this.api('tweets/search/stream/rules',{method:'POST',body:JSON.stringify({add:[{value,tag:'tibo-reset-live'}]})});
-      this.poll=setInterval(()=>this.catchup().catch(e=>this.status.error=e.message),120000);
+      if(this.stopped)return;
+      this.poll=setInterval(()=>this.catchup().catch(e=>{if(!this.stopped)this.status.error=e.message;}),120000);
       await this.stream();
-    }catch(e){this.status.error=e.message;this.status.connected=false;if(!this.stopped){await sleep(60000);return this.start();}}
+    }catch(e){if(this.stopped)return;this.status.error=e.message;this.status.connected=false;
+      try{await sleep(60000,undefined,{signal:this.lifecycle.signal});}catch{return;}
+      if(!this.stopped)return this.start();
+    }
   }
   async stream() {
     let delay=5000;
     while(!this.stopped){
       const abort=new AbortController();this.abort=abort;let watchdog;
       try{
-        const r=await fetch('https://api.x.com/2/tweets/search/stream?tweet.fields=created_at,author_id,referenced_tweets,edit_history_tweet_ids',{headers:{Authorization:'Bearer '+this.token},signal:abort.signal});
+        const r=await this.fetchImpl('https://api.x.com/2/tweets/search/stream?tweet.fields=created_at,author_id,referenced_tweets,edit_history_tweet_ids',{headers:{Authorization:'Bearer '+this.token},signal:AbortSignal.any([abort.signal,this.lifecycle.signal])});
+        if(this.stopped)return;
         if(!r.ok)throw new Error('X stream HTTP '+r.status);
         this.status.connected=true;this.status.error=null;delay=5000;let buffer='';
         const decoder=new TextDecoder();
         const resetWatchdog=()=>{clearTimeout(watchdog);watchdog=setTimeout(()=>abort.abort(),45000);};resetWatchdog();
         for await(const chunk of r.body){
+          if(this.stopped)break;
           resetWatchdog();buffer+=decoder.decode(chunk,{stream:true});
           let i;while((i=buffer.indexOf('\n'))>=0){
             const line=buffer.slice(0,i).trim();buffer=buffer.slice(i+1);if(!line)continue;
@@ -124,8 +138,8 @@ export class Monitor {
         }
       }catch(e){this.status.error=e.message;}
       finally{clearTimeout(watchdog);this.status.connected=false;abort.abort();}
-      if(!this.stopped){await sleep(delay);delay=Math.min(120000,delay*2);}
+      if(!this.stopped){try{await sleep(delay,undefined,{signal:this.lifecycle.signal});}catch{return;}delay=Math.min(120000,delay*2);}
     }
   }
-  stop(){this.stopped=true;clearInterval(this.poll);this.abort?.abort();}
+  stop(){this.stopped=true;this.lifecycle.abort();clearInterval(this.poll);this.abort?.abort();}
 }

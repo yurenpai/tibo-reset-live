@@ -5,3 +5,7 @@ data
 *.zip
 .runtime
 .artifacts
+local-sources.json
+local-sources.json.*.tmp
+**/local-sources.json
+**/local-sources.json.*.tmp

@@ -29,7 +29,7 @@ export function renderSourceStatus(data){
  }else list.append(row({title:'社区观测源',description:'未配置。当前不会从社区接口收录新观测；日历中的既有观测记录仍会保留。'}));
  const hint=document.querySelector('#observed-source-hint');
  hint.textContent=!obs.enabled?'未配置观测源，当前不会产生新的社区观测提醒；此选项只保存提醒偏好。':obs.error?'社区观测源检查异常，请展开「数据来源与后台状态」查看；此选项只保存提醒偏好。':'已配置社区观测源。提醒仅代表来源报告，不保证你的账号已到账。';
- document.querySelector('#source-route-note').textContent=status.mode==='public'?(status.usingFallback?'当前使用备用帖子源；主源恢复后自动切回。':'按主源优先、故障时尝试备用源的顺序检查；同一帖子按 X 帖子 ID 去重。'):'官方 API 与公共帖子源是两种连接模式；高级用户可在本机 .env 中设置 SOURCE_MODE 和 X_BEARER_TOKEN，重启后台生效。';
+ document.querySelector('#source-route-note').textContent=status.mode==='public'?(status.usingFallback?'当前使用备用帖子源；主源恢复后自动切回。':'按主源优先、故障时尝试备用源的顺序检查；同一帖子按 X 帖子 ID 去重。'):'官方 API 与公共帖子源是两种连接模式；本机可展开「配置数据来源」切换并保存，云部署使用 .env。';
  const backups=(status.sources||[]).filter(s=>s.role==='fallback').length;
  document.querySelector('#source-counts').textContent=`${status.mode==='public'?`主源 1 · 备用 ${backups}`:'X 官方 API'} · 社区 ${obs.enabled?(obs.sources?.length||0):'未配置'}`;
 }

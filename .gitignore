@@ -10,3 +10,5 @@ data/
 /*.png
 /.runtime/
 /.artifacts/
+local-sources.json
+local-sources.json.*.tmp

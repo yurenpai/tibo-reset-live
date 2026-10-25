@@ -13,6 +13,7 @@ import { partsAt, PACIFIC_ZONE } from './schedule.js';
 import { dateInZone } from '../public/content.js';
 import { PublicFeedMonitor } from './public-feed.js';
 import { DesktopNotifications } from './desktop.js';
+import { SourceConfig } from './source-config.js';
 
 import {projectRoot as root,dataDirFor,migrateLegacyData} from './paths.js';
 const ptDate = now => {
@@ -103,7 +104,7 @@ export class DailyDigest {
   stop(){clearInterval(this.timer);}
 }
 
-export function createApp({store,history,planDoc,monitor,observationSources=[],observations=null,pushReady=false,publicKey=null,origin='http://localhost:8788',now=()=>Date.now(),desktop=null}) {
+export function createApp({store,history,planDoc,monitor,observationSources=[],observations=null,sourceConfig=null,pushReady=false,publicKey=null,origin='http://localhost:8788',now=()=>Date.now(),desktop=null}) {
   const app=express();app.disable('x-powered-by');
   app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'");next();});
   app.use(express.json({limit:'8kb'}));
@@ -117,7 +118,18 @@ export function createApp({store,history,planDoc,monitor,observationSources=[],o
     }next();
   });
   app.get('/api/health',(req,res)=>res.set('Cache-Control','no-store').json({app:'tibo-reset-live',ok:true,local:!!desktop}));
-  app.get('/api/calendar',(req,res)=>{const events=store.events();res.set('Cache-Control','no-store').json({events,plan:buildPlan(planDoc,now(),events),status:monitor.status,observations:observations?.status()||{enabled:observationSources.length>0,checkedAt:observationSources.length?(store.get('observationCheck')||null):null,error:observationSources.length?(store.get('observationError')||null):null,intervalSeconds:300,sources:observationSources.map(url=>({url,connected:false}))},historyCheckedAt:history.checkedAt,lastCheck:store.get('lastCheck')||null,pushReady,publicKey:pushReady?publicKey:null,desktop:desktop?.status()||null});});
+  app.use('/api/local/source-config',(req,res,next)=>{
+    if(!desktop||!sourceConfig)return res.sendStatus(404);
+    res.set('Cache-Control','no-store');next();
+  });
+  app.get('/api/local/source-config',(req,res)=>res.json(sourceConfig.view()));
+  app.post('/api/local/source-config',(req,res)=>{
+    try{res.json({ok:true,config:sourceConfig.save(req.body)});}catch(error){res.status(400).json({error:error.message});}
+  });
+  app.post('/api/local/source-config/test',async(req,res)=>{
+    try{res.json({ok:true,results:await sourceConfig.test(req.body)});}catch(error){res.status(400).json({error:error.message});}
+  });
+  app.get('/api/calendar',(req,res)=>{const events=store.events();res.set('Cache-Control','no-store').json({sourceConfigurable:!!desktop&&!!sourceConfig,events,plan:buildPlan(planDoc,now(),events),status:monitor.status,observations:observations?.status()||{enabled:observationSources.length>0,checkedAt:observationSources.length?(store.get('observationCheck')||null):null,error:observationSources.length?(store.get('observationError')||null):null,intervalSeconds:300,sources:observationSources.map(url=>({url,connected:false}))},historyCheckedAt:history.checkedAt,lastCheck:store.get('lastCheck')||null,pushReady,publicKey:pushReady?publicKey:null,desktop:desktop?.status()||null});});
   app.post('/api/local/preferences',(req,res)=>{
     if(!desktop)return res.sendStatus(404);
     if(!req.body||typeof req.body!=='object'||Array.isArray(req.body)||('preferences'in req.body&&(!req.body.preferences||typeof req.body.preferences!=='object'||Array.isArray(req.body.preferences))))return res.status(400).json({error:'无效的本机通知设置'});
@@ -175,21 +187,22 @@ export function startServer(env=process.env) {
   if(desktop)desktop.service={supervised:env.LOCAL_SUPERVISED==='1'};
   const onEvent=(event,{notify=true}={})=>{deliver().catch(()=>{});if(notify)desktop?.event(event);};
   const mode=env.SOURCE_MODE||'auto';
-  const monitor=mode==='public'||(mode==='auto'&&!env.X_BEARER_TOKEN)?new PublicFeedMonitor(store,onEvent,env):new Monitor(store,onEvent,env);
-  if(!(monitor instanceof PublicFeedMonitor))monitor.status.mode='api';
+  const sourceConfig=desktop?new SourceConfig(store,onEvent,env,{file:path.join(dataDir,'local-sources.json')}):null;
+  const monitor=sourceConfig||(mode==='public'||(mode==='auto'&&!env.X_BEARER_TOKEN)?new PublicFeedMonitor(store,onEvent,env):new Monitor(store,onEvent,env));
+  if(!sourceConfig&&!(monitor instanceof PublicFeedMonitor))monitor.status.mode='api';
   const observationSources=(env.OBSERVATION_SOURCES||'').split(',').map(s=>s.trim()).filter(s=>/^https:\/\//.test(s));
-  const observations=new Observations(store,onEvent,observationSources);
+  const observations=sourceConfig?{status:()=>sourceConfig.observations.status(),start:()=>{},stop:()=>{}}:new Observations(store,onEvent,observationSources);
   const digest=new DailyDigest(store,planDoc,onEvent);
-  const app=createApp({store,history,planDoc,monitor,observationSources,observations,pushReady,publicKey:env.VAPID_PUBLIC_KEY,origin,desktop});
+  const app=createApp({store,history,planDoc,monitor,observationSources,observations,sourceConfig,pushReady,publicKey:env.VAPID_PUBLIC_KEY,origin,desktop});
   // 本机桌面通知的控制接口只存在于绑定回环地址的本地模式。
   const host=desktop?'127.0.0.1':env.HOST||'0.0.0.0';
   const server=app.listen(Number(env.PORT)||8788,host,()=>console.log('Local: http://localhost:'+(env.PORT||8788)));
   const retry=setInterval(()=>deliver().catch(()=>{}),30000);
-  monitor.start().catch(e=>{console.error(e.message);});
+  Promise.resolve(monitor.start()).catch(e=>{console.error(e.message);});
   observations.start();digest.start();
   function shutdown(){monitor.stop();observations.stop();digest.stop();clearInterval(retry);server.close(()=>{store.close();process.exit(0);});setTimeout(()=>process.exit(0),2000).unref();}
   process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
-  return {app,server,store,monitor,observations,digest,desktop,dataDir};
+  return {app,server,store,monitor,observations,sourceConfig,digest,desktop,dataDir};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer();

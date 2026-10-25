@@ -1,0 +1,68 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const artifact=require('./artifacts.cjs');
+(async()=>{
+ const {Store}=await import('../../src/store.js');
+ const {SourceConfig}=await import('../../src/source-config.js');
+ const {PublicFeedMonitor}=await import('../../src/public-feed.js');
+ const {DesktopNotifications}=await import('../../src/desktop.js');
+ const {createApp,seedHistoricalEvents}=await import('../../src/server.js');
+ const now=Date.parse('2026-10-25T12:00:00Z'),root=path.resolve(__dirname,'../..');
+ const folder=fs.mkdtempSync(path.join(os.tmpdir(),'tibo-source-ui-')),file=path.join(folder,'local-sources.json');
+ const store=new Store(':memory:'),sent=[];
+ const desktop=new DesktopNotifications(store,{send:async message=>sent.push(message),now:()=>now});desktop.save({enabled:true});
+ const history=JSON.parse(fs.readFileSync(path.join(root,'resources/history.json'))),planDoc=JSON.parse(fs.readFileSync(path.join(root,'resources/plan-data.json')));
+ seedHistoricalEvents(store,history,planDoc);
+ let rows=[{id:'3000000000000000000',url:'https://x.com/thsottiaux/status/3000000000000000000',text:'Thanks!',at:new Date(now-1000).toISOString()}];
+ const fetchImpl=async url=>url.includes('api.x.com')?new Response(JSON.stringify({data:{id:'123'}})):url.includes('community')?new Response(JSON.stringify({observations:[]})):url.includes('backup')?new Response('bad',{status:503}):new Response(JSON.stringify({profile:{handle:'thsottiaux'},fetched_at:new Date(now).toISOString(),tweets:rows}));
+ const options={file,now:()=>now,fetchImpl,monitorFactory:(mode,callback,env)=>mode==='public'?new PublicFeedMonitor(store,callback,env,{now:()=>now,fetchImpl}):{status:{mode:'api',configured:!!env.X_BEARER_TOKEN,connected:false},async start(){this.status.connected=true;},stop(){this.status.connected=false;}}};
+ const onEvent=(e,{notify=true}={})=>{if(notify)desktop.event(e);};
+ const config=new SourceConfig(store,onEvent,{},options);config.start();
+ const server=createApp({store,monitor:config,sourceConfig:config,observations:{status:()=>config.observations.status()},desktop,history,planDoc,now:()=>now,origin:'http://localhost:8796'}).listen(8796,'127.0.0.1');
+ await new Promise(r=>server.once('listening',r));
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+ try{
+  let page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[],responses=[];
+  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.url().includes('/api/'))responses.push(r);});
+  await page.clock.install({time:new Date(now)});await page.goto('http://localhost:8796');await page.waitForSelector('.day');
+  await page.locator('.source-status > details > summary').click();await page.locator('#source-config-panel > summary').click();
+  await page.waitForFunction(()=>document.querySelector('#source-primary').value.includes('codex-reset.com'));
+  await page.locator('#source-primary').fill('https://primary.test/feed');await page.locator('#source-backup-1').fill('https://backup.test/feed');await page.locator('#source-community').fill('https://community.test/feed');
+  await page.locator('#source-config-test').click();await page.waitForFunction(()=>document.querySelector('#source-config-status').textContent.includes('测试完成'));
+  assert.equal(await page.locator('#source-config-results li').count(),3);assert.equal(await page.locator('#source-config-results [data-state=error]').count(),1);
+  assert(!fs.existsSync(file));assert.equal(sent.length,0);
+  await page.locator('#source-config-save').click();await page.waitForFunction(()=>document.querySelector('#source-config-status').textContent.includes('已保存到本机'));
+  assert.equal(config.view().publicFeedUrl,'https://primary.test/feed');assert.equal(config.view().observationSources.length,1);
+  await page.waitForFunction(()=>document.querySelector('#observed-source-hint').textContent.includes('已配置'));
+  await page.locator('#source-primary').fill('https://draft.test/feed');await page.clock.runFor(20100);
+  assert.equal(await page.locator('#source-primary').inputValue(),'https://draft.test/feed');
+  await page.locator('#source-primary').fill('http://insecure.test/feed');await page.locator('#source-config-save').click();
+  await page.waitForFunction(()=>document.querySelector('#source-config-status').textContent.includes('HTTPS'));
+  assert.equal(config.view().publicFeedUrl,'https://primary.test/feed');
+  await page.locator('#source-primary').fill('https://primary.test/feed');await page.selectOption('#source-mode','api');
+  assert(await page.locator('#source-api-fields').isVisible());await page.locator('#source-token').fill('ui-private-token');
+  await page.locator('#source-config-test').click();await page.waitForFunction(()=>document.querySelector('#source-config-status').textContent.includes('测试完成'));
+  assert((await page.locator('#source-config-results').innerText()).includes('流和时间线权限'));
+  await page.locator('#source-config-save').click();await page.waitForFunction(()=>document.querySelector('#source-config-status').textContent.includes('已保存到本机'));
+  assert.equal(config.status.mode,'api');assert.equal(await page.locator('#source-token').inputValue(),'');assert(config.view().tokenConfigured);
+  assert(await page.locator('#source-frequency-form').isHidden());
+  await page.reload();await page.waitForSelector('.day');await page.locator('.source-status > details > summary').click();await page.locator('#source-config-panel > summary').click();
+  await page.waitForFunction(()=>document.querySelector('#source-mode').value==='api');
+  assert.equal(await page.locator('#source-token').inputValue(),'');assert((await page.locator('#source-token-state').innerText()).includes('已配置 Token'));
+  await page.locator('#source-config-panel').scrollIntoViewIfNeeded();await page.screenshot({path:artifact('source-config-desktop.png')});
+  await page.setViewportSize({width:390,height:844});await page.locator('#source-token').scrollIntoViewIfNeeded();
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:artifact('source-config-mobile.png')});
+  await page.locator('#source-config-reset').click();assert.equal(config.status.mode,'api');
+  assert.equal(await page.locator('#source-mode').inputValue(),'public');assert(await page.locator('#source-clear-token').isChecked());
+  await page.locator('#source-config-save').click();await page.waitForFunction(()=>document.querySelector('#source-config-status').textContent.includes('已保存到本机'));
+  assert.equal(config.status.mode,'public');assert.equal(config.view().tokenConfigured,false);assert.deepEqual(config.view().observationSources,[]);
+  for(const response of responses){const body=await response.text().catch(()=>null);if(body)assert(!body.includes('ui-private-token'));}
+  assert.deepEqual(errors,[]);await page.close();
+  rows.push({id:'3000000000000000001',url:'https://x.com/thsottiaux/status/3000000000000000001',text:'We have reset all accounts.',at:new Date(now-500).toISOString()});
+  await config.monitor.check();await desktop.chain;assert.equal(sent.length,1);
+  config.stop();const restarted=new SourceConfig(store,onEvent,{SOURCE_MODE:'api',X_BEARER_TOKEN:'ignored-env-token'},options);
+  try{assert.equal(restarted.view().mode,'public');assert.equal(restarted.view().tokenConfigured,false);restarted.start();await restarted.monitor.check();await desktop.chain;assert.equal(sent.length,1);}finally{restarted.stop();}
+  console.log('通过：配置入口、草稿/测试隔离、主备/社区保存、API 切换与 Token 不回显、错误保留旧配置、手机布局、恢复默认、关闭页面通知及重启恢复去重');
+ }finally{config.stop();await browser.close();await new Promise(r=>server.close(r));store.close();assert.equal(path.dirname(folder),os.tmpdir());fs.rmSync(folder,{recursive:true,force:true});}
+})().catch(error=>{console.error(error);process.exitCode=1;});
