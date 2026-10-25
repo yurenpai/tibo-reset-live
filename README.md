@@ -1,8 +1,8 @@
 # Tibo Reset Live · OpenAI Codex 额度重置追踪器
 
-> No-login OpenAI Codex usage-limit reset tracker and Tibo 28-day plan calendar, with Windows desktop notifications and a self-hosted Node.js option.
+> No-login OpenAI Codex usage-limit reset tracker and Tibo 28-day plan calendar, with Windows, macOS and Linux desktop notifications.
 
-下载代码后双击 `start.cmd`，在自己的电脑运行中文重置月历、28 天计划、金色狂欢和人物五阶段。默认从公共 JSON 源定时收录 Tibo 的原帖与回复，无需 X 账号、Cookies、API Token、Telegram 或云服务器。提醒使用本机系统通知，关闭网页后由后台进程继续检查。
+下载代码后用对应系统的启动文件，在自己的电脑运行中文重置月历、28 天计划、金色狂欢和人物五阶段。默认从公共 JSON 源定时收录 Tibo 的原帖与回复，无需 X 账号、Cookies、API Token、Telegram 或云服务器。提醒使用本机系统通知，关闭网页后由后台进程继续检查。
 
 公共源由第三方维护，仍需联网，可能延迟、遗漏或中断，不能保证秒级或完整覆盖；页面显示本机检查时间、上游更新时间、最新收录帖时间和错误。可选官方 X API / 云端 Web Push 保留。
 
@@ -28,25 +28,31 @@
 - 本地免登录源已实际读取验证，包含主帖、回复、原文、UTC 时间和父帖 ID；系统通知可在页面点击测试。真实 X 长连接与公网 Web Push 尚未完成端到端验收。
 - `resources/history.json` 保留原有 10 条重置历史；`resources/plan-data.json` 独立维护计划声明、18 个已绑定原帖的计划日及核实发布时间。历史回填不发通知。
 - 未配置 X 时自动使用公共源；公共源故障时明确显示异常，继续保留历史，不伪装为实时连接。
-- Node.js 24.15+（24 LTS）或 26+；Windows 启动器可自动下载并校验便携 Node 24，无需管理员安装。SQLite、日志和偏好位于 `data/`，不可上传。
+- Node.js 24.15+（24 LTS）或 26+；Windows 启动器可自动下载并校验便携 Node 24，无需管理员安装。macOS/Linux 目前需先安装 Node.js。SQLite、日志和偏好位于系统用户数据目录，不随源码更新丢失。
 
 ## 本地启动
 
-Windows 解压或克隆项目，双击 `start.cmd`。首次需要联网下载依赖；没有兼容 Node 时从 nodejs.org 下载便携运行时，并按官方 SHASUMS256.txt 校验 SHA256。启动器会检查重复进程、选择空闲端口并打开本地日历。打开后点击“开启本机桌面提醒”，按需选择通知类别；在“数据来源与后台状态”内点击“发送桌面测试通知”。
+| 系统 | 普通启动 | 登录后自动启动 | 停止 | 取消自动启动 |
+| --- | --- | --- | --- | --- |
+| Windows | 双击 `start.cmd` | 双击 `start-service.cmd` | 双击 `stop.cmd` | 双击 `disable-autostart.cmd` |
+| macOS | 双击 `start.command` | 双击 `start-service.command` | 双击 `stop.command` | 双击 `disable-autostart.command` |
+| Linux | `./start.sh` | `./start-service.sh` | `./stop.sh` | `./disable-autostart.sh` |
 
-| 文件 | 用途 |
-| --- | --- |
-| `start.cmd` | 启动或重新打开本地日历，后台进程隐藏运行 |
-| `start-service.cmd` | 一次设置当前用户登录后自动启动，并立即拉起后台和日历 |
-| `stop.cmd` | 停止本项目后台，保留日历和偏好 |
-| `enable-autostart.cmd` | 可选：添加当前用户登录后启动的快捷方式 |
-| `disable-autostart.cmd` | 移除本项目的登录启动快捷方式 |
+Windows 首次需要联网下载依赖；没有兼容 Node 时会从 nodejs.org 下载便携 Node 24，并按官方 SHA256 清单校验。macOS 和 Linux 先安装 Node.js 24.15+（24 LTS）或 26+，然后运行上表启动文件；首次启动同样会自动执行 `npm ci`。macOS 从 ZIP 解压后若不能双击，可先在终端运行 `chmod +x *.command`；若因下载文件的隔离属性被拦截，可在 Finder 里右键 `start.command` 选择“打开”，或在终端执行 `sh start.command`。Linux 从 ZIP 解压后若没有执行权限，可先运行 `chmod +x *.sh`，或直接用 `sh start.sh`。
 
-首次启动不会自行添加登录启动项。停止脚本校验项目路径、进程 ID 和启动时间，不会停止其他 Node 项目。关闭网页不停止后台；关机、休眠、断网或源故障期间无法持续监测。恢复后补查可见记录，仅对最近 6 小时的新记录提醒，首次读取及旧记录不群发。勿扰模式、系统通知设置和平台通知支持会影响弹窗展示。
+启动器会检查重复进程、选择 8788–8808 间的空闲端口并打开本地日历。打开后点击“开启本机桌面提醒”，按需选择通知类别；在“数据来源与后台状态”内点击“发送桌面测试通知”。Windows 使用系统 Toast，macOS 使用通知中心，Linux 使用 `notify-send`；Debian/Ubuntu 缺少它时执行 `sudo apt install libnotify-bin`。
 
-启动器现在运行用户级后台守护：工作进程异常退出时按退避间隔自动拉起，无需管理员安装 Windows 系统服务。`stop.cmd` 会一并停止本项目守护及其工作进程。`start-service.cmd` 只有在使用者主动双击时才写入当前用户的登录启动快捷方式；登录后自动运行，不会在尚未登录或电脑关闭时监测。
+首次启动不会自行添加登录启动项。Windows 使用当前用户“启动”目录，macOS 使用 LaunchAgent；Linux 的 systemd 图形会话目标可用时使用用户级服务，否则回退到桌面会话自启。所有方案都不需要管理员安装系统服务。停止请求使用随机令牌校验后台身份，不会按名称批量杀死其他 Node 项目。取消自动启动只影响以后的登录；立即停止监测请运行对应停止脚本。设置自启后请保留源码目录；移动目录后需从新位置重新设置（Windows 可先在旧位置取消）。
 
-记录、源读取游标、通知开关和类别均持久化到 `data/calendar.sqlite`。正常关机、重启、停止和重新启动不会清空；人物会按真实经过的时间继续计算，预告仍会保留。更新代码时保留原来的 `data/` 目录；换到一个全新的项目副本会使用新副本自己的数据。
+关闭网页不停止后台；关机、休眠、断网或源故障期间无法持续监测。恢复后补查可见记录，仅对最近 6 小时的新记录提醒，首次读取及旧记录不群发。勿扰模式、系统通知设置和平台通知支持会影响弹窗展示。工作进程异常退出时，用户级后台守护会按退避间隔自动拉起；只有用户主动运行 `start-service` 才会写入登录启动项。
+
+记录、源读取游标、通知开关和类别均持久化到系统用户数据目录：
+
+- Windows：`%LOCALAPPDATA%\TiboResetLive`
+- macOS：`~/Library/Application Support/TiboResetLive`
+- Linux：`${XDG_DATA_HOME:-~/.local/share}/tibo-reset-live`
+
+正常关机、更新源码、换一个新的源码目录或重新启动都不会清空数据。同一系统用户默认共用一份记录和一个后台。首次从旧版本升级前，先在旧目录运行 `stop.cmd`；启动时程序通过 SQLite 一致快照迁移 `data/calendar.sqlite` 中的记录、偏好和已提交 WAL 数据。旧数据库保留用于回退，新目录已有数据库时不覆盖。高级用户可用 `TIBO_DATA_DIR` 指定其他数据目录，相对路径按项目根目录解析。
 
 已有 Node 的用户也可运行：
 
@@ -55,9 +61,11 @@ npm ci
 npm run local
 ```
 
+`npm run local` 是前台运行，关闭终端会停止；需要隐藏后台请用上表启动文件。已有兼容 Node 时可用 `npm run local:status` 查询后台、`npm run local:stop` 停止。Linux 无桌面服务器能运行日历服务，但无法显示本机桌面弹窗。
+
 本地入口只绑定 `127.0.0.1`，不开放给局域网。本地模式不需要 VAPID 或 HTTPS；提醒类别和开关保存在本机 SQLite，与页面筛选独立。`npm run local` 默认地址为 http://localhost:8788；双击启动器遇到占用会在 8788–8808 中选择空闲端口，打开时请使用启动器显示的 localhost 地址。
 
-Linux/macOS 可用 `npm run local`（通知分别依赖桌面会话与 `notify-send` / 系统通知）；一键脚本当前针对 Windows 验证。高级用户配置 `.env`：`SOURCE_MODE=auto`（默认）会在有 `X_BEARER_TOKEN` 时选择官方源，否则选择公共源；`public` 固定使用公共源，`api` 只用官方接口。
+三平台共用相同的后台控制器和数据格式；已新增 GitHub Actions 配置，推送后将在 Windows、macOS、Ubuntu 上运行 Node 测试与脚本检查。本地已验证 Windows 启动、重复启动、停止和数据恢复；macOS/Linux 的通知权限、桌面环境和登录自启仍需对应真机验收，新增 CI 也需推送后查看实际结果。高级用户配置 `.env`：`SOURCE_MODE=auto`（默认）会在有 `X_BEARER_TOKEN` 时选择官方源，否则选择公共源；`public` 固定使用公共源，`api` 只用官方接口。
 
 ## 项目目录
 
@@ -69,27 +77,37 @@ tibo-reset-live/
 ├─ public/              网页、样式与人物图片
 ├─ resources/           项目自带的历史记录与 28 天计划
 ├─ tests/               自动测试（browser/ 内为浏览器检查）
-├─ scripts/             Windows 启动、停止与自启动脚本
+├─ scripts/             三平台启动、停止、守护与自启动脚本
 ├─ docs/                文档与展示截图
 ├─ README.md            使用说明
 ├─ package.json         运行命令与依赖
 ├─ start.cmd            双击启动
 ├─ start-service.cmd    启动并设置登录自启动
-└─ stop.cmd             停止后台
+├─ start.command        macOS 双击启动
+├─ start.sh             Linux / Unix 启动
+└─ stop.*               各平台停止后台
 ```
 
-`.env.example`、Docker 配置及登录自启动开关也保留在根目录。运行后生成的 `data/`、`.runtime/`、`node_modules/` 和 `.artifacts/` 均不提交 GitHub。`resources/` 是随项目分发的资料，个人新增记录和提醒设置仍保存在根目录的 `data/calendar.sqlite`，升级时请保留 `data/`。
+`.env.example`、Docker 配置及登录自启动开关也保留在根目录。运行后生成的 `.runtime/`、`node_modules/` 和 `.artifacts/` 均不提交 GitHub；旧版 `data/` 也继续忽略。`resources/` 是随项目分发的资料，个人新增记录、检查游标和提醒设置保存在系统用户数据目录，不上传 GitHub。
 
 ## 免登录公共数据源
 
 默认地址：[codex-reset.com/api/feed](https://codex-reset.com/api/feed)。这是第三方公开收录接口，程序只读其 `tweets` 内的原文、发布时间、账号和父帖关系；不采用它的 `confirmed`、信号评分或“已到账”判断。通过本项目自己的分类器区分功能、预告、完成和发卡，并保留原帖与收录源链接。收录的原文未经本项目独立核验，不等于直接通过官方 API 验证。
 
-- 默认每 120 秒检查，使用 ETag 条件请求，不重叠发起轮询，最短限制 60 秒。通过 `PUBLIC_POLL_SECONDS` 调整。
+- 默认“智能检查”：平时约 5 分钟，出现新重置预告后约 2 分钟；到账证据出现后恢复普通间隔。单条未落地预告最多加速 48 小时，日历仍继续保留预告。
+- 本机页面“数据来源与后台状态 → 自动检查频率”可选择智能、快速（2 分钟）、标准（5 分钟）、省流（15 分钟）；保存后立即重新安排下一次检查，关闭网页或重启后仍有效。界面显示实际间隔和下次计划检查时间。
+- 间隔加入约 ±10% 随机错峰，最短 120 秒；同一后台不并发检查。失败后从至少约 5 分钟逐级退避，最长约 30 分钟；遇到上游 `Retry-After` 则至少等待其指定时间。恢复成功后回到所选模式。
+- 休眠恢复后补查一次，仍遵守最短间隔和上游限流等待时间；电脑关闭期间无法监测。页面每 20 秒读取的是本机后台，不会额外请求公共源。
+- 支持上游提供 ETag 时发送条件请求；上游不提供 ETag 时仍下载完整 JSON，不能保证节省响应流量。
+- 高级配置使用 `PUBLIC_POLL_MODE=smart|fast|standard|saver`，本机保存的选择优先。旧 `PUBLIC_POLL_SECONDS` 仅在没有新模式设置时映射到安全预设，不再支持任意秒数。官方 X 实时流不显示此频率选择。
 - `fetched_at` 是上游检查时间，最新原帖时间不是检查时间；用户长时间没发帖不等于源已故障。
 - 上游标记 stale 或检查时间落后 15 分钟时显示过期，静默保留记录，不推送这些记录。
 - 第一次成功读取只建立基线；后续按原帖 ID 去重，新补录的旧帖不群发。回复缺失父帖信息时不猜测 Done 的含义。
 - HTTP 429、断网、格式改变或错账号均显示异常；不会把失败解释成“没有新帖”。
 - `PUBLIC_FEED_URL` 可换为相同结构的可信 HTTPS JSON 源。这个功能依赖第三方服务可用性，你无需运营服务器，但不能保证来源永久可用或原帖发布后立刻同步。
+- `PUBLIC_FEED_FALLBACK_URLS` 可填写最多两个相同 JSON 结构的备用接口，逗号分隔。主源正常时不请求备用；网络错误、限流、格式错误或数据过期时按顺序尝试。各源独立保存 ETag、失败退避和 `Retry-After` 等待；主源冷却结束后优先重试，成功则切回。同一帖子跨源仍按 X 帖子 ID 去重。
+- **当前默认只有一个公共帖子源，没有内置备用源或社区实时观测接口。** 2026-10-25 核查的候选尚不符合接入要求，详见[候选来源核查](docs/source-review.md)。备用机制已实现，不代表已找到独立、可靠的第二或第三条来源。
+- 页面「数据来源与后台状态 → 逐项来源状态」显示各源的地址、最近检查/成功时间、上游时间、冷却时间和失败原因。备用源与社区源未配置时明确提示；主源失败不会被显示为“没有新动态”。
 - 探测时 X Syndication 返回 429，公共 RSSHub 路由不可用，FxTwitter 用户接口只返回账号资料，所以它们未被伪装成免登录时间线备用源。
 
 ## 三个内容视图
@@ -181,18 +199,20 @@ Tibo 声明未来 28 天每天发布明显改进或全面重置。**这只是计
 {"observations":[{"id":"day18-20261023T0100Z","at":"2026-10-23T01:00:00Z","url":"https://example.test/record","note":"说明文字","scope":"Codex 用户"}]}
 ```
 
-仅完整来源链接、有效时间、最近 7 天、非明显未来的数据入库。ID 去重，失败不影响其他源；可在 API 查看错误和检查时间。观测代表公共追踪的报告，不是官方确认，也不是每个用户都已到账的保证。
+仅完整来源链接、有效时间、最近 7 天、非明显未来的数据入库。按记录 ID 去重；多个接口转发相同来源链接、时间和适用范围的观测也不重复提醒。每条记录保存收录接口地址。正常每 5 分钟检查，单个源失败独立退避至最多约 30 分钟，并遵守更长的 `Retry-After`；不并发重叠检查。一个源失败不影响其他源；界面和 API 均显示每条源的检查结果、最近成功时间和错误。观测代表公共追踪的报告，不是官方确认，也不是每个用户都已到账的保证。
+
+未配置接口时，通知偏好旁会显示「未配置观测源，当前不会产生新的社区观测提醒」。勾选只是保存偏好，不会自动接入数据源；已有历史观测仍保留。X 官方 API 目前同样只支持在 `.env` 配置 `X_BEARER_TOKEN`，没有网页登录 X 或读取 Cookies 的界面；本次未新增登录操作。
 
 ## 开源分发与可选云部署
 
-默认分发方式是每个人自行下载、克隆并运行，不需要仓库作者提供公共服务器。`data/`、`.runtime/`、`.env`、用户订阅和日志都留在各自电脑，不上传 GitHub。
+默认分发方式是每个人自行下载、克隆并运行，不需要仓库作者提供公共服务器。系统用户数据目录、`.runtime/`、`.env`、用户订阅和日志都留在各自电脑，不上传 GitHub。
 
 想让电脑关闭后仍持续监测的高级用户，可自行部署长期运行的 Node 服务：复制 `.env.example` 为 `.env`，运行 `npm run keys` 并填写两项 VAPID key、维护者邮箱、外部 HTTPS `PUBLIC_ORIGIN`，用 `npm start` 或 `docker compose up -d --build` 启动。官方实时流另需有权限的 X 应用 Token。密钥只留在自己的部署环境，不能共享到仓库。GitHub Pages 无法运行这些后台功能。
 
 云端不暴露本机桌面控制接口。Web Push 受系统、浏览器后台、联网和推送服务可达性影响；部分移动系统需添加到主屏幕。云端接入仍需单独实测。
 
 发布前：
-- 检查 `.gitignore`，不提交 `.env`、`data/`、`node_modules/`、凭证或用户订阅。
+- 检查 `.gitignore`，不提交 `.env`、旧版 `data/`、`node_modules/`、凭证或用户订阅。
 - 先本地测试，再用维护者自己的设备验收真实 X / HTTPS / 关闭页面后的通知。
 - 若自行将实例开放给别人，需加反向代理限流、订阅限制及数据备份；费用由该实例部署者承担。
 

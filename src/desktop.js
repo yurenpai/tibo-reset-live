@@ -1,8 +1,9 @@
 import { wantsNotification,normalizePreferences } from './preferences.js';
+import {spawnSync} from 'node:child_process';
 
 export class DesktopNotifications {
-  constructor(store,{send,platform=process.platform,now=()=>Date.now()}={}) {
-    this.store=store;this.send=send;this.platform=platform;this.now=now;this.chain=Promise.resolve();
+  constructor(store,{send,platform=process.platform,env=process.env,probe=spawnSync,now=()=>Date.now()}={}) {
+    this.store=store;this.send=send;this.platform=platform;this.env=env;this.probe=probe;this.now=now;this.chain=Promise.resolve();
     this.state={lastAttempt:null,lastAccepted:null,error:null};
   }
   settings(){let saved={};try{saved=JSON.parse(this.store.get('desktopSettings')||'{}');}catch{}return {enabled:saved.enabled===true,preferences:normalizePreferences(saved.preferences)};}
@@ -11,10 +12,22 @@ export class DesktopNotifications {
     const settings={enabled:typeof input?.enabled==='boolean'?input.enabled:before.enabled,preferences:normalizePreferences({...before.preferences,...input?.preferences})};
     this.store.set('desktopSettings',JSON.stringify(settings));return settings;
   }
-  status(){return {...this.settings(),...this.state,supported:['win32','darwin','linux'].includes(this.platform),service:this.service||null};}
+  platformSupport(){
+    if(!['win32','darwin','linux'].includes(this.platform))return {supported:false,backend:'unsupported',hint:'当前系统不支持本机桌面通知'};
+    if(this.platform==='linux'){
+      if(this.send)return {supported:true,backend:'notify-send',hint:null};
+      if(!this.env.DISPLAY&&!this.env.WAYLAND_DISPLAY)return {supported:false,backend:'notify-send',hint:'需要已登录的 Linux 桌面会话；无桌面服务器不能显示本机弹窗'};
+      const check=this.probe('sh',['-c','command -v notify-send'],{stdio:'ignore'});
+      if(check.status!==0)return {supported:false,backend:'notify-send',hint:'请安装 libnotify（Debian/Ubuntu：sudo apt install libnotify-bin）'};
+      return {supported:true,backend:'notify-send',hint:null};
+    }
+    return {supported:true,backend:this.platform==='win32'?'windows-toast':'macos-notification-center',hint:null};
+  }
+  status(){return {...this.settings(),...this.state,...this.platformSupport(),platform:this.platform,service:this.service||null};}
   async notify(title,message){
     this.state.lastAttempt=new Date(this.now()).toISOString();
     try {
+      const support=this.platformSupport();if(!support.supported)throw Error(support.hint);
       if(this.send)await this.send({title,message});
       else {
         const {default:notifier}=await import('node-notifier');

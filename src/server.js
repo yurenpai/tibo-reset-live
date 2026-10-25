@@ -14,7 +14,7 @@ import { dateInZone } from '../public/content.js';
 import { PublicFeedMonitor } from './public-feed.js';
 import { DesktopNotifications } from './desktop.js';
 
-import {projectRoot as root} from './paths.js';
+import {projectRoot as root,dataDirFor,migrateLegacyData} from './paths.js';
 const ptDate = now => {
   const p=partsAt(new Date(now),PACIFIC_ZONE);
   return `${p.year}-${String(p.month).padStart(2,'0')}-${String(p.day).padStart(2,'0')}`;
@@ -103,7 +103,7 @@ export class DailyDigest {
   stop(){clearInterval(this.timer);}
 }
 
-export function createApp({store,history,planDoc,monitor,observationSources=[],pushReady=false,publicKey=null,origin='http://localhost:8788',now=()=>Date.now(),desktop=null}) {
+export function createApp({store,history,planDoc,monitor,observationSources=[],observations=null,pushReady=false,publicKey=null,origin='http://localhost:8788',now=()=>Date.now(),desktop=null}) {
   const app=express();app.disable('x-powered-by');
   app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'");next();});
   app.use(express.json({limit:'8kb'}));
@@ -117,7 +117,7 @@ export function createApp({store,history,planDoc,monitor,observationSources=[],p
     }next();
   });
   app.get('/api/health',(req,res)=>res.set('Cache-Control','no-store').json({app:'tibo-reset-live',ok:true,local:!!desktop}));
-  app.get('/api/calendar',(req,res)=>{const events=store.events();res.set('Cache-Control','no-store').json({events,plan:buildPlan(planDoc,now(),events),status:monitor.status,observations:{enabled:observationSources.length>0,checkedAt:store.get('observationCheck')||null,error:store.get('observationError')||null},historyCheckedAt:history.checkedAt,lastCheck:store.get('lastCheck')||null,pushReady,publicKey:pushReady?publicKey:null,desktop:desktop?.status()||null});});
+  app.get('/api/calendar',(req,res)=>{const events=store.events();res.set('Cache-Control','no-store').json({events,plan:buildPlan(planDoc,now(),events),status:monitor.status,observations:observations?.status()||{enabled:observationSources.length>0,checkedAt:observationSources.length?(store.get('observationCheck')||null):null,error:observationSources.length?(store.get('observationError')||null):null,intervalSeconds:300,sources:observationSources.map(url=>({url,connected:false}))},historyCheckedAt:history.checkedAt,lastCheck:store.get('lastCheck')||null,pushReady,publicKey:pushReady?publicKey:null,desktop:desktop?.status()||null});});
   app.post('/api/local/preferences',(req,res)=>{
     if(!desktop)return res.sendStatus(404);
     if(!req.body||typeof req.body!=='object'||Array.isArray(req.body)||('preferences'in req.body&&(!req.body.preferences||typeof req.body.preferences!=='object'||Array.isArray(req.body.preferences))))return res.status(400).json({error:'无效的本机通知设置'});
@@ -126,6 +126,12 @@ export function createApp({store,history,planDoc,monitor,observationSources=[],p
   app.post('/api/local/test-notification',async(req,res)=>{
     if(!desktop)return res.sendStatus(404);
     try{await desktop.test();res.json({ok:true,message:'通知调用已完成，请检查桌面通知中心。系统勿扰模式可能会隐藏弹窗。'});}catch(error){res.status(503).json({error:error.message});}
+  });
+  app.post('/api/local/source-settings',(req,res)=>{
+    if(!desktop)return res.sendStatus(404);
+    if(typeof monitor.setPollMode!=='function')return res.status(409).json({error:'当前数据源不使用定时检查'});
+    try{res.json({ok:true,status:monitor.setPollMode(req.body?.pollMode)});}
+    catch(error){res.status(400).json({error:error.message});}
   });
   app.post('/api/subscribe',(req,res)=>{
     if(!pushReady)return res.status(503).json({error:'维护者尚未配置浏览器推送'});
@@ -151,8 +157,9 @@ export function createApp({store,history,planDoc,monitor,observationSources=[],p
 }
 
 export function startServer(env=process.env) {
-  fs.mkdirSync(path.join(root,'data'),{recursive:true});
-  const store=new Store(path.join(root,'data','calendar.sqlite'));
+  const dataDir=dataDirFor(env);
+  if(env.LOCAL_MODE==='1'&&env.TIBO_SKIP_LEGACY_MIGRATION!=='1')migrateLegacyData(dataDir,{root});else fs.mkdirSync(dataDir,{recursive:true});
+  const store=new Store(path.join(dataDir,'calendar.sqlite'));
   const history=JSON.parse(fs.readFileSync(path.join(root,'resources','history.json'),'utf8'));
   const planDoc=JSON.parse(fs.readFileSync(path.join(root,'resources','plan-data.json'),'utf8'));
   seedHistoricalEvents(store,history,planDoc);
@@ -173,7 +180,7 @@ export function startServer(env=process.env) {
   const observationSources=(env.OBSERVATION_SOURCES||'').split(',').map(s=>s.trim()).filter(s=>/^https:\/\//.test(s));
   const observations=new Observations(store,onEvent,observationSources);
   const digest=new DailyDigest(store,planDoc,onEvent);
-  const app=createApp({store,history,planDoc,monitor,observationSources,pushReady,publicKey:env.VAPID_PUBLIC_KEY,origin,desktop});
+  const app=createApp({store,history,planDoc,monitor,observationSources,observations,pushReady,publicKey:env.VAPID_PUBLIC_KEY,origin,desktop});
   // 本机桌面通知的控制接口只存在于绑定回环地址的本地模式。
   const host=desktop?'127.0.0.1':env.HOST||'0.0.0.0';
   const server=app.listen(Number(env.PORT)||8788,host,()=>console.log('Local: http://localhost:'+(env.PORT||8788)));
@@ -182,7 +189,7 @@ export function startServer(env=process.env) {
   observations.start();digest.start();
   function shutdown(){monitor.stop();observations.stop();digest.stop();clearInterval(retry);server.close(()=>{store.close();process.exit(0);});setTimeout(()=>process.exit(0),2000).unref();}
   process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
-  return {app,server,store,monitor,observations,digest,desktop};
+  return {app,server,store,monitor,observations,digest,desktop,dataDir};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer();

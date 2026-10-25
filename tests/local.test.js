@@ -116,7 +116,9 @@ test('磁盘关闭再打开后，预告/观测/提醒偏好/源游标/去重记�
   s.addEvent({id:'announced',at:new Date(now-86400000).toISOString(),kind:'scheduled',topic:'reset',windowEnd:new Date(now-1000).toISOString()});
   const desktop=new DesktopNotifications(s);desktop.save({enabled:true,preferences:{feature:true}});
   s.set('publicFeedInitialized','1');s.set('publicFeedCursor','100');s.set('desktopSent:observed','sent');s.close();s=null;
+  s=new Store(file);new PublicFeedMonitor(s,()=>{}).setPollMode('saver');s.close();s=null;
   s=new Store(file);assert.equal(s.events().length,2);assert.equal(s.get('publicFeedCursor'),'100');assert.equal(s.get('desktopSent:observed'),'sent');
+  assert.equal(new PublicFeedMonitor(s,()=>{}).pollMode,'saver');
   assert.equal(new DesktopNotifications(s).settings().enabled,true);assert.equal(new DesktopNotifications(s).settings().preferences.feature,true);
   assert.equal(resetAppearance(s.events(),now).pending,true);assert.equal(resetAppearance(s.events(),now).overdue,true);
  }finally{if(s)s.close();for(const name of ['calendar.sqlite','calendar.sqlite-wal','calendar.sqlite-shm']){const target=path.join(folder,name);if(fs.existsSync(target))fs.unlinkSync(target);}fs.rmdirSync(folder);}

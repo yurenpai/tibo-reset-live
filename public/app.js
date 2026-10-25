@@ -1,10 +1,11 @@
 import { resetAppearance } from './theme.js';
 import { filterEvents, timeInZone } from './content.js';
 import { renderPlan } from './plan-ui.js';
+import { renderSourceStatus } from './source-status.js';
 const navigation=new URLSearchParams(location.search);
 let contentView=['all','plan'].includes(navigation.get('view'))?navigation.get('view'):'reset';
 const $=s=>document.querySelector(s);
-let visualPreview=null,previousCelebration=false,desktopLoaded=false,webPushRestored=false;
+let visualPreview=null,previousCelebration=false,desktopLoaded=false,webPushRestored=false,frequencyDirty=false;
 const quotes=['赞美重置，满血复活！','今天的我，依然清晰。','还好，我还能再等等。','线条开始有自己的想法。','额度没了，画质也没了。'];
 function confetti(){
  const layer=$('#confetti');layer.replaceChildren();if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -84,7 +85,7 @@ function render(){
   const p=document.createElement('p');p.textContent=e.note;
   const text=document.createElement('p');text.className='excerpt';text.textContent=e.excerpt||'';text.hidden=!e.excerpt;
   item.append(h,time,p,text);
-  if(e.via){const via=document.createElement('p');via.className='via-source';via.textContent='公共镜像收录，原文未经本项目独立核验。';const a=document.createElement('a');a.href=e.via.url;a.textContent='查看收录源 ↗';a.target='_blank';a.rel='noopener noreferrer';via.append(a);item.append(via);}
+  if(e.via){const via=document.createElement('p');via.className='via-source';via.textContent=e.via.type==='community-feed'?'社区来源报告，未经本项目独立核验。':'公共镜像收录，原文未经本项目独立核验。';const a=document.createElement('a');a.href=e.via.url;a.textContent='查看收录源 ↗';a.target='_blank';a.rel='noopener noreferrer';via.append(a);item.append(via);}
   if(e.windowStart&&e.windowEnd){
    const window=document.createElement('div');window.className='time-window';
    const caption=document.createElement('span');caption.textContent='推算观察窗口';
@@ -111,23 +112,28 @@ function render(){
  $('#connection').textContent=publicMode?(data.status.connected?'● 公共源定时检查':'○ 公共源暂不可用'):data.status.connected?'● 实时源已连接':data.status.configured?'○ 实时源重连中':'○ 尚未接入实时源';
  $('#source-summary').textContent=publicMode?'免登录 · 定时检查':data.status.mode==='api'?'官方 API':'未接入';
  $('#source-description').replaceChildren();
- if(publicMode){const a=document.createElement('a');a.href=data.status.sourceUrl;a.textContent='公共收录源';a.target='_blank';a.rel='noopener noreferrer';$('#source-description').append(a,` · 每 ${data.status.intervalSeconds} 秒检查 Tibo 的主帖和回复。第三方可能延迟、遗漏或中断；可点击原帖核对，不保证秒级。`);}
+ if(publicMode){const a=document.createElement('a');a.href=data.status.sourceUrl;a.textContent='公共收录源';a.target='_blank';a.rel='noopener noreferrer';const interval=data.status.intervalSeconds?`当前约每 ${Math.round(data.status.intervalSeconds/60)} 分钟检查`:'正在安排下一次检查';$('#source-description').append(a,` · ${data.status.pollLabel||'定时检查'}，${interval} Tibo 的主帖和回复。第三方可能延迟、遗漏或中断；可点击原帖核对，不保证秒级。`);}
  else $('#source-description').textContent='官方 X API 为可选数据源，需要自行配置应用凭证。';
  const displayTime=at=>at?bjt.format(new Date(at))+' 北京时间':'尚无';
- $('#source-times').textContent=publicMode?`本机最近检查：${displayTime(data.status.lastCheck)}；上游最近更新：${displayTime(data.status.upstreamAt)}；最新收录帖：${displayTime(data.status.newestPostAt)}`:'';
- $('#source-error').textContent=data.status.error||'';
+ $('#source-times').textContent=publicMode?`本机最近检查：${displayTime(data.status.lastCheck)}；下次计划检查：${displayTime(data.status.nextCheck)}；上游最近更新：${displayTime(data.status.upstreamAt)}；最新收录帖：${displayTime(data.status.newestPostAt)}`:'';
+ $('#source-error').textContent=(data.status.error||'')+(publicMode&&data.status.failureCount>0?` · 连续 ${data.status.failureCount} 次检查异常，已自动延长检查间隔。`:'');
  const obs=data.observations;
+ renderSourceStatus(data);
  $('#checked').textContent=(data.lastCheck?'最近检查：'+bjt.format(new Date(data.lastCheck)):'历史核对：'+bjt.format(new Date(data.historyCheckedAt))+' · 实时源未接入')+
   (obs?.enabled?(obs.checkedAt?' · 观测源 '+bjt.format(new Date(obs.checkedAt)):' · 观测源等待首次检查'):' · 未配置社区观测源');
  $('#subscribe').disabled=!data.desktop&&!data.pushReady;
  $('#desktop-info').hidden=!data.desktop;$('#test-desktop').hidden=!data.desktop;
  $('#background-help').hidden=!data.desktop;
+ const frequencyForm=$('#source-frequency-form');frequencyForm.hidden=!(data.desktop&&publicMode);
+ if(!frequencyForm.hidden&&!frequencyDirty)$('#source-frequency').value=data.status.pollMode||'smart';
  if(data.desktop){
   $('.notification-settings > p').textContent='提醒开关和类别保存在这台电脑。关闭网页或重启电脑后会保留；后台重新运行并联网后继续检查。';
   $('.footnote').textContent='本机后台使用系统桌面通知，关闭网页后仍可提醒。请保持电脑唤醒、联网和后台进程运行；系统勿扰模式可能隐藏弹窗。重置确认记录的是原帖发布时间，个人额度以账号显示为准。';
   $('#subscribe').textContent='开启本机桌面提醒';$('#unsubscribe').textContent='关闭本机提醒';
   $('#subscribe').hidden=data.desktop.enabled;$('#unsubscribe').hidden=!data.desktop.enabled;
-  $('#desktop-info').textContent=(data.desktop.service?.supervised?'后台守护正在运行，进程异常退出会自动重启。':'本地后台正在运行。')+'关掉网页仍可提醒。记录和偏好保存在本机，重启后不会清空；关机或休眠期间暂停监测。'+(data.desktop.error?' 最近通知错误：'+data.desktop.error:'');
+  const platformHelp=data.desktop.platform==='darwin'?'双击 start.command 启动；start-service.command 可设置登录自启，stop.command 停止。':data.desktop.platform==='linux'?'运行 ./start.sh 启动；./start-service.sh 可设置登录自启，./stop.sh 停止。':'双击 start.cmd 启动；start-service.cmd 可设置登录自启，stop.cmd 停止。';
+  $('#desktop-info').textContent=(data.desktop.service?.supervised?'后台守护正在运行，进程异常退出会自动重启。':'本地后台正在运行。')+'关掉网页仍可提醒。记录和偏好保存在系统用户数据目录，更新源码或重启不会清空；关机或休眠期间暂停监测。'+(data.desktop.supported?'':` 当前通知后端未就绪：${data.desktop.hint||'系统不支持'}。`)+(data.desktop.error?' 最近通知错误：'+data.desktop.error:'');
+  $('#background-help').textContent=platformHelp;
   if(!desktopLoaded){showPreferences(data.desktop.preferences);desktopLoaded=true;$('#preferences-status').textContent='偏好保存在这台电脑，关闭网页后继续生效。';}
  }else if(!data.pushReady)$('#message').textContent='当前未配置云端推送。本机使用请双击 start.cmd，可启用桌面提醒。';
  if(!data.desktop&&!webPushRestored){webPushRestored=true;restoreWebPush();}
@@ -176,6 +182,8 @@ $('#subscribe').onclick=async()=>{
 };
 $('#unsubscribe').onclick=async()=>{try{if(data.desktop){await localSettings({enabled:false});$('#message').textContent='本机提醒已关闭，日历继续收录。';return;}const reg=await registration();const sub=await reg.pushManager.getSubscription();if(sub){const r=await fetch('/api/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})});if(!r.ok)throw Error('取消未成功，请重试');await sub.unsubscribe();}$('#subscribe').hidden=false;$('#unsubscribe').hidden=true;$('#message').textContent='已取消提醒。';}catch(e){$('#message').textContent=e.message;}};
 async function localSettings(settings){const r=await fetch('/api/local/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(settings)});const result=await r.json();if(!r.ok)throw Error(result.error||'保存失败');data.desktop=result.desktop;render();}
+$('#source-frequency').onchange=()=>{frequencyDirty=true;$('#source-frequency-status').textContent='尚未保存';};
+$('#source-frequency-form').onsubmit=async event=>{event.preventDefault();const button=event.submitter||event.currentTarget.querySelector('button'),select=$('#source-frequency');button.disabled=true;select.disabled=true;try{const r=await fetch('/api/local/source-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pollMode:select.value})});const result=await r.json();if(!r.ok)throw Error(result.error||'保存失败');data.status=result.status;frequencyDirty=false;$('#source-frequency-status').textContent='已保存到本机，关闭网页或重启后继续生效。';render();}catch(error){$('#source-frequency-status').textContent=error.message;}finally{button.disabled=false;select.disabled=false;}};
 $('#test-desktop').onclick=async()=>{const button=$('#test-desktop');button.disabled=true;try{const r=await fetch('/api/local/test-notification',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const result=await r.json();$('#test-result').textContent=result.message||result.error;}catch{$('#test-result').textContent='无法联系本地后台';}finally{button.disabled=false;}};
 refresh();setInterval(refresh,20000);
 setInterval(renderAppearance,60000);

@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const projectRoot=path.resolve(__dirname,'../..');
+const artifact=require('./artifacts.cjs');
 (async()=>{
  const {Store}=await import('../../src/store.js');
  const {DesktopNotifications}=await import('../../src/desktop.js');
@@ -17,7 +18,7 @@ const projectRoot=path.resolve(__dirname,'../..');
  let rows=[{id:'3000000000000000000',url:'https://x.com/thsottiaux/status/3000000000000000000',text:'Day 19/ It is reset day today.',at:new Date(now-2000).toISOString()}];
  let fail=false;
  const monitor=new PublicFeedMonitor(store,(e,options)=>{if(options.notify)desktop.event(e);},{},{now:()=>now,fetchImpl:async()=>fail?new Response('limited',{status:429}):new Response(JSON.stringify({fetched_at:new Date(now).toISOString(),profile:{handle:'thsottiaux'},tweets:rows}),{headers:{'content-type':'application/json'}})});
- await monitor.check();assert.equal(sent.length,0);
+ await monitor.start();assert.equal(sent.length,0);
  const server=createApp({store,history,planDoc,monitor,desktop,now:()=>now,origin:'http://localhost:8793'}).listen(8793,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try{
@@ -37,10 +38,29 @@ const projectRoot=path.resolve(__dirname,'../..');
   assert(await page.locator('body').evaluate(e=>e.classList.contains('announced')));
   await page.locator('#subscribe').click();await page.waitForFunction(()=>!document.querySelector('#unsubscribe').hidden);
   assert.equal(desktop.settings().enabled,true);assert.equal(sent.length,0);
-  await page.locator('.source-status summary').click();await page.locator('#test-desktop').click();
+  await page.locator('.source-status > details > summary').click();
+  assert((await page.locator('#source-counts').innerText()).includes('备用 0'));
+  assert((await page.locator('#source-counts').innerText()).includes('社区 未配置'));
+  await page.locator('.source-details summary').click();
+  assert.equal(await page.locator('.source-row').count(),3);
+  assert((await page.locator('.source-row').nth(0).innerText()).includes('当前使用'));
+  assert((await page.locator('.source-row').nth(1).innerText()).includes('未配置'));
+  assert((await page.locator('#observed-source-hint').textContent()).includes('不会产生新的社区观测提醒'));
+  await page.locator('.source-details summary').click();
+  assert.equal(await page.locator('#source-frequency').inputValue(),'smart');
+  assert((await page.locator('#source-times').innerText()).includes('下次计划检查：2026'));
+  await page.selectOption('#source-frequency','saver');await page.locator('#source-description').click();
+  const refreshed=page.waitForResponse(r=>r.url().endsWith('/api/calendar'));await page.clock.runFor(20100);await refreshed;await page.waitForTimeout(50);
+  assert.equal(await page.locator('#source-frequency').inputValue(),'saver'); // 尚未保存的选择不被刷新覆盖。
+  await page.locator('#source-frequency-form button').click();
+  await page.waitForFunction(()=>document.querySelector('#source-frequency-status').textContent.includes('已保存到本机'));
+  assert.equal(monitor.pollMode,'saver');assert.equal(store.get('publicPollMode'),'saver');
+  await page.screenshot({path:artifact('poll-frequency-desktop.png'),fullPage:false});
+  await page.locator('#test-desktop').click();
   await page.waitForFunction(()=>document.querySelector('#test-result').textContent.includes('已完成'));assert.equal(sent.length,1);
   await page.locator('.notification-settings summary').click();await page.locator('input[name=feature]').check();await page.locator('#save-preferences').click();
   await page.waitForFunction(()=>document.querySelector('#preferences-status').textContent.includes('已保存到本机'));assert.equal(desktop.settings().preferences.feature,true);
+  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:artifact('source-status-desktop.png'),fullPage:false});
   await page.close(); // 后台进程继续接收新动态，完全没有打开的页面。
   rows.push({id:'3000000000000000001',url:'https://x.com/thsottiaux/status/3000000000000000001',text:'Done',at:new Date(now-1000).toISOString(),is_reply:true,in_reply_to_tweet_id:'3000000000000000000'});
   await monitor.check();await desktop.chain;assert.equal(sent.length,2);assert.match(sent.at(-1).title,/确认重置/);
@@ -50,16 +70,24 @@ const projectRoot=path.resolve(__dirname,'../..');
   assert(await page.locator('body').evaluate(e=>e.classList.contains('celebrating')&&!e.classList.contains('announced')));
   assert(await page.locator('#announcement-detail').isHidden());
   assert(await page.locator('#unsubscribe').isVisible());assert(await page.locator('input[name=feature]').isChecked());
+  assert.equal(await page.locator('#source-frequency').inputValue(),'saver');
   await page.locator('.plan-day').nth(2).focus();
   const updated=page.waitForResponse(r=>r.url().endsWith('/api/calendar'));await page.clock.runFor(20100);await updated;await page.waitForTimeout(50);
   assert.equal(await page.evaluate(()=>document.activeElement.dataset.planDay),'3');
   fail=true;await monitor.check();assert.equal(monitor.status.connected,false);
-  await page.reload();await page.waitForSelector('.plan-day');await page.locator('.source-status summary').click();
+  await page.reload();await page.waitForSelector('.plan-day');await page.locator('.source-status > details > summary').click();
   assert((await page.locator('#source-error').innerText()).includes('429'));
+  await page.locator('.source-details summary').click();
+  assert((await page.locator('.source-row').nth(0).innerText()).includes('429'));
+  assert((await page.locator('.source-row').nth(0).innerText()).includes('最近成功：2026-10-23'));
+  await page.locator('.notification-settings summary').click();
   await page.setViewportSize({width:390,height:844});
   for(const view of ['reset','plan','all']){await page.locator(`[data-view=${view}]`).click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:artifact('poll-frequency-mobile.png'),fullPage:false});
+  await page.locator('#observed-source-hint').scrollIntoViewIfNeeded();
+  await page.screenshot({path:artifact('source-status-mobile.png'),fullPage:false});
   await page.locator('#unsubscribe').click();await page.waitForFunction(()=>!document.querySelector('#subscribe').hidden);assert.equal(desktop.settings().enabled,false);
   assert.deepEqual(errors,[]);
-  console.log('通过：预告持续显示/退出预览/完成转狂欢、免登录状态、本机提醒设置、关闭网页后后台提醒与去重、重新打开恢复、故障提示、刷新焦点、手机三视图');
- }finally{await browser.close();await new Promise(r=>server.close(r));store.close();}
+  console.log('通过：各源状态/未配置提示/失败后保留成功时间、检查频率保存/重开恢复/不覆盖草稿、预告持续显示/完成转狂欢、本机提醒、关闭网页后后台通知与去重、故障提示、刷新焦点、手机三视图');
+ }finally{monitor.stop();await browser.close();await new Promise(r=>server.close(r));store.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

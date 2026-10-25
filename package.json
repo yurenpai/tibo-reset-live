@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.js",
     "local": "node --env-file-if-exists=.env src/local.js",
+    "local:status": "node scripts/local-control.mjs status",
+    "local:stop": "node scripts/local-control.mjs stop",
     "test": "node --test tests/*.test.js",
     "test:ui": "node tests/browser/qa.cjs",
     "test:festival": "node tests/browser/festival-qa.cjs",

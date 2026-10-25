@@ -1,13 +1,22 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tibo 重置日历</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/festival.css"><link rel="stylesheet" href="/mascot.css"><link rel="stylesheet" href="/evidence.css"><link rel="stylesheet" href="/plan.css"><link rel="stylesheet" href="/local.css"><script src="/app.js" type="module"></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tibo 重置日历</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/festival.css"><link rel="stylesheet" href="/mascot.css"><link rel="stylesheet" href="/evidence.css"><link rel="stylesheet" href="/plan.css"><link rel="stylesheet" href="/local.css"><link rel="stylesheet" href="/source-settings.css"><script src="/app.js" type="module"></script></head>
 <body><div id="confetti" aria-hidden="true"></div><main>
 <header><div><div class="eyebrow">TIBO · CODEX</div><h1>重置日历<span>↻</span></h1><p>把额度重置的消息，及时送到你面前。</p></div><div class="actions"><span id="connection">正在连接…</span><button id="subscribe" disabled>订阅重置提醒</button><button id="unsubscribe" hidden>取消提醒</button></div></header>
 <div id="message" role="status" aria-live="polite"></div>
 <div class="utility-panels">
-<section class="source-status" aria-label="数据与后台状态"><details><summary>数据来源与后台状态 <span id="source-summary">正在检查</span></summary><p id="source-description"></p><p id="source-times"></p><p id="source-error" role="status"></p><p id="desktop-info" hidden></p><p id="background-help" hidden>双击 start.cmd 启动后台；双击 start-service.cmd 可同时设为登录后自动运行。停止后台用 stop.cmd，取消自动运行用 disable-autostart.cmd。</p><button id="test-desktop" hidden type="button">发送桌面测试通知</button><span id="test-result" role="status" aria-live="polite"></span></details></section>
+<section class="source-status" aria-label="数据与后台状态"><details><summary>数据来源与后台状态 <span id="source-summary">正在检查</span></summary><p id="source-description"></p><p id="source-times"></p><p id="source-error" role="status"></p>
+<p id="source-route-note"></p><details class="source-details"><summary>逐项来源状态 <span id="source-counts"></span></summary><ul id="source-list" aria-label="各数据源状态"></ul></details>
+<p class="source-setup-help">高级接入：当前没有网页登录 X 的入口。X 官方 API 需在本机 .env 配置应用密钥；备用帖子接口和社区接口也需配置后重启后台。</p>
+<form id="source-frequency-form" hidden>
+ <label for="source-frequency">自动检查频率</label>
+ <select id="source-frequency" name="pollMode" aria-describedby="source-frequency-help"><option value="smart">智能检查 · 平时约 5 分钟，预告后约 2 分钟</option><option value="fast">快速 · 约 2 分钟</option><option value="standard">标准 · 约 5 分钟</option><option value="saver">省流 · 约 15 分钟</option></select>
+ <button type="submit">保存频率</button><span id="source-frequency-status" role="status" aria-live="polite"></span>
+ <p id="source-frequency-help">检查时间会稍作错峰；源故障或限流时自动延长。智能模式最多为一条新预告加速 48 小时。</p>
+</form>
+<p id="desktop-info" hidden></p><p id="background-help" hidden></p><button id="test-desktop" hidden type="button">发送桌面测试通知</button><span id="test-result" role="status" aria-live="polite"></span></details></section>
 <details class="notification-settings"><summary>通知偏好 · 与页面筛选独立</summary><p>默认仅提醒官方确认重置和社区观测到账。修改后需保存到服务器，关闭页面后仍按此设置推送。</p>
 <form id="preferences-form"><fieldset><legend>我希望收到</legend>
-<label><input type="checkbox" name="confirmed" checked>重置已确认</label><label><input type="checkbox" name="observed" checked>社区观测到账</label><label><input type="checkbox" name="scheduled">重置预告 / 重置卡</label><label><input type="checkbox" name="feature">功能更新</label><label><input type="checkbox" name="digest">每日计划摘要（PT 18:00）</label>
+<label><input type="checkbox" name="confirmed" checked>重置已确认</label><label><input type="checkbox" name="observed" checked aria-describedby="observed-source-hint">社区观测到账</label><p id="observed-source-hint" class="observed-source-hint">正在核对社区观测源是否已配置。</p><label><input type="checkbox" name="scheduled">重置预告 / 重置卡</label><label><input type="checkbox" name="feature">功能更新</label><label><input type="checkbox" name="digest">每日计划摘要（PT 18:00）</label>
 </fieldset><button id="save-preferences" type="submit">保存通知偏好</button><span id="preferences-status" role="status" aria-live="polite">未订阅时，所选偏好将在订阅时保存。</span></form></details>
 </div>
 <div id="preview-notice" hidden role="status">外观预览中 · 日历记录、实时判断和通知均不受影响 <button id="exit-preview">回到真实状态</button></div>

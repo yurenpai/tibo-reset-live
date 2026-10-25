@@ -2,28 +2,11 @@ param([switch]$NoBrowser,[switch]$Portable)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runtimeDir = Join-Path $projectRoot '.runtime'
-$dataDir = Join-Path $projectRoot 'data'
-New-Item -ItemType Directory -Force -Path $runtimeDir, $dataDir | Out-Null
-$ledgerPath = Join-Path $dataDir 'local-instance.json'
-$localEntry = Join-Path $projectRoot 'src\local-service.js'
-$sha = [Security.Cryptography.SHA256]::Create()
-$mutexName = 'Local\TiboReset-' + ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($projectRoot))).Replace('-','').Substring(0,16))
+New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
+$mutexName = 'Local\TiboResetLiveLauncher'
 $mutex = New-Object Threading.Mutex($false, $mutexName)
 if (-not $mutex.WaitOne(0)) { Write-Host 'Another launcher is starting this project. Please wait.'; exit 0 }
 try {
-    if (Test-Path -LiteralPath $ledgerPath) {
-        $ledger = Get-Content -LiteralPath $ledgerPath -Raw | ConvertFrom-Json
-        $running = Get-Process -Id $ledger.pid -ErrorAction SilentlyContinue
-        if ($running -and $running.StartTime.ToUniversalTime().Ticks.ToString() -eq $ledger.startedTicks) {
-            $health = Invoke-RestMethod -Uri ($ledger.url + '/api/health') -TimeoutSec 5
-            if ($health.app -eq 'tibo-reset-live' -and $health.local) {
-                Write-Host ('Already running: ' + $ledger.url)
-                if (-not $NoBrowser) { Start-Process $ledger.url }
-                exit 0
-            }
-            throw 'The recorded process is running but its health check failed. Use stop.cmd and retry.'
-        }
-    }
     $nodePath = $null
     $systemNode = Get-Command node.exe -ErrorAction SilentlyContinue
     $candidates = @()
@@ -60,27 +43,10 @@ try {
         finally { Pop-Location }
         Set-Content -LiteralPath $hashPath -Value $lockHash -Encoding ASCII
     }
-    # Reserve only a free loopback port. local.js sets the exact matching Origin.
-    $port = 8788
-    while ($port -lt 8809) {
-        $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $port)
-        try { $listener.Start(); $listener.Stop(); break } catch { $listener.Stop(); $port++ }
-    }
-    if ($port -ge 8809) { throw 'No free local port between 8788 and 8808.' }
-    $env:PORT = $port.ToString()
-    $url = 'http://localhost:' + $port
-    $process = Start-Process -FilePath $nodePath -ArgumentList ('--env-file-if-exists=.env "' + $localEntry + '"') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $dataDir 'local.stdout.log') -RedirectStandardError (Join-Path $dataDir 'local.stderr.log')
-    @{ pid=$process.Id; root=$projectRoot; url=$url; startedTicks=$process.StartTime.ToUniversalTime().Ticks.ToString() } | ConvertTo-Json | Set-Content -LiteralPath $ledgerPath -Encoding UTF8
-    $ready = $false
-    $lastHealthError = 'No response received'
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        $process.Refresh()
-        if ($process.HasExited) { throw ('Background process exited. See ' + (Join-Path $dataDir 'local.stderr.log')) }
-        try { $health = Invoke-RestMethod -Uri ('http://127.0.0.1:' + $port + '/api/health') -TimeoutSec 3; if ($health.app -eq 'tibo-reset-live' -and $health.local) { $ready=$true; break }; $lastHealthError='Unexpected service response' } catch { $lastHealthError=$_.Exception.Message; Start-Sleep -Milliseconds 300 }
-    }
-    if (-not $ready) { throw ('Local service did not become ready: ' + $lastHealthError + '. Check data/local.stderr.log.') }
-    Write-Host ('Running in background: ' + $url)
-    Write-Host 'Close the calendar page freely. Use stop.cmd to stop monitoring.'
-    if (-not $NoBrowser) { Start-Process $url }
+    # All platforms share the same launcher, migration and stop protocol.
+    $controlArgs = @((Join-Path $PSScriptRoot 'local-control.mjs'), 'start')
+    if ($NoBrowser) { $controlArgs += '--no-browser' }
+    & $nodePath @controlArgs
+    if ($LASTEXITCODE -ne 0) { throw 'Local service did not start. See the message above.' }
 } catch { Write-Error $_; exit 1 }
 finally { $mutex.ReleaseMutex(); $mutex.Dispose() }

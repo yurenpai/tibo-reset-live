@@ -1,0 +1,58 @@
+name: 跨平台测试
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  node-tests:
+    name: ${{ matrix.os }} · Node 24
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: 验证 Windows 启动器与共享控制器互通
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:TIBO_DATA_DIR = Join-Path $env:RUNNER_TEMP ('tibo-qa-' + [guid]::NewGuid())
+          $env:TIBO_SKIP_LEGACY_MIGRATION = '1'
+          $env:SOURCE_MODE = 'public'
+          $env:PUBLIC_FEED_URL = 'https://127.0.0.1.invalid/feed'
+          try {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1 -NoBrowser
+            if ($LASTEXITCODE -ne 0) { throw 'Start failed' }
+            $ledger = Join-Path $env:TIBO_DATA_DIR 'local-instance.json'
+            if (-not (Test-Path -LiteralPath $ledger)) { throw 'No background instance was started' }
+            $first = Get-Content -LiteralPath $ledger -Raw | ConvertFrom-Json
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1 -NoBrowser
+            if ($LASTEXITCODE -ne 0) { throw 'Duplicate start failed' }
+            $second = Get-Content -LiteralPath $ledger -Raw | ConvertFrom-Json
+            if ($first.pid -ne $second.pid) { throw 'More than one instance started' }
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1
+            if ($LASTEXITCODE -ne 0 -or (Test-Path -LiteralPath $ledger)) { throw 'Stop failed' }
+          } finally {
+            node scripts/local-control.mjs stop
+          }
+      - name: 检查 Unix 启动脚本语法
+        if: runner.os != 'Windows'
+        run: |
+          for script in *.sh *.command scripts/*.sh; do
+            sh -n "$script" || exit 1
+          done
+      - name: 检查跨平台控制器语法
+        run: node --check scripts/local-control.mjs && node --check scripts/autostart.mjs
