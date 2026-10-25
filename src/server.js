@@ -14,6 +14,7 @@ import { dateInZone } from '../public/content.js';
 import { PublicFeedMonitor } from './public-feed.js';
 import { DesktopNotifications } from './desktop.js';
 import { SourceConfig } from './source-config.js';
+import {ResetClock,repairResetSchedules} from './reset-clock.js';
 
 import {projectRoot as root,dataDirFor,migrateLegacyData} from './paths.js';
 const ptDate = now => {
@@ -91,8 +92,9 @@ export class DailyDigest {
     const events=this.store.events().filter(e=>e.topic!=='plan'&&Date.parse(e.at)<=now&&ptDate(e.at)===today.date);
     const confirmed=events.filter(e=>e.topic==='reset'&&e.kind==='confirmed').length;
     const observed=events.filter(e=>e.kind==='observed').length;
+    const timed=events.filter(e=>e.kind==='timed').length;
     const features=events.filter(e=>e.topic==='feature').length;
-    const e={id,at:new Date(now).toISOString(),kind:'digest',topic:'plan',evidence:'summary',status:'reported',digestDate:today.date,planDay:today.day,title:`Day ${today.day} · 每日计划摘要`,note:`太平洋时间 ${today.date}：${today.title}。官方重置确认 ${confirmed} 条，社区观测 ${observed} 条，功能更新 ${features} 条。未记录不代表没有更新；计划和预告不等于重置完成。`,sourceType:'summary',historical:!notify};
+    const e={id,at:new Date(now).toISOString(),kind:'digest',topic:'plan',evidence:'summary',status:'reported',digestDate:today.date,planDay:today.day,title:`Day ${today.day} · 每日计划摘要`,note:`太平洋时间 ${today.date}：${today.title}。官方重置确认 ${confirmed} 条，按预告到点 ${timed} 条，社区观测 ${observed} 条，功能更新 ${features} 条。未记录不代表没有更新；到点项依据官方预告时间触发。`,sourceType:'summary',historical:!notify};
     if(this.store.addEvent(e,notify)){this.onEvent(e,{notify});return true;}
     return false;
   }
@@ -175,6 +177,7 @@ export function startServer(env=process.env) {
   const history=JSON.parse(fs.readFileSync(path.join(root,'resources','history.json'),'utf8'));
   const planDoc=JSON.parse(fs.readFileSync(path.join(root,'resources','plan-data.json'),'utf8'));
   seedHistoricalEvents(store,history,planDoc);
+  repairResetSchedules(store);
   const origin=env.PUBLIC_ORIGIN||'http://localhost:8788';
   const pushReady=!!(env.VAPID_PUBLIC_KEY&&env.VAPID_PRIVATE_KEY);
   if(pushReady)webpush.setVapidDetails(env.VAPID_SUBJECT||'mailto:owner@example.com',env.VAPID_PUBLIC_KEY,env.VAPID_PRIVATE_KEY);
@@ -186,6 +189,7 @@ export function startServer(env=process.env) {
   const desktop=env.LOCAL_MODE==='1'?new DesktopNotifications(store):null;
   if(desktop)desktop.service={supervised:env.LOCAL_SUPERVISED==='1'};
   const onEvent=(event,{notify=true}={})=>{deliver().catch(()=>{});if(notify)desktop?.event(event);};
+  const resetClock=new ResetClock(store,onEvent);
   const mode=env.SOURCE_MODE||'auto';
   const sourceConfig=desktop?new SourceConfig(store,onEvent,env,{file:path.join(dataDir,'local-sources.json')}):null;
   const monitor=sourceConfig||(mode==='public'||(mode==='auto'&&!env.X_BEARER_TOKEN)?new PublicFeedMonitor(store,onEvent,env):new Monitor(store,onEvent,env));
@@ -199,10 +203,10 @@ export function startServer(env=process.env) {
   const server=app.listen(Number(env.PORT)||8788,host,()=>console.log('Local: http://localhost:'+(env.PORT||8788)));
   const retry=setInterval(()=>deliver().catch(()=>{}),30000);
   Promise.resolve(monitor.start()).catch(e=>{console.error(e.message);});
-  observations.start();digest.start();
-  function shutdown(){monitor.stop();observations.stop();digest.stop();clearInterval(retry);server.close(()=>{store.close();process.exit(0);});setTimeout(()=>process.exit(0),2000).unref();}
+  desktop?.start();resetClock.start();observations.start();digest.start();
+  function shutdown(){resetClock.stop();monitor.stop();observations.stop();digest.stop();clearInterval(retry);const pendingDesktop=desktop?.stop();server.close(async()=>{await pendingDesktop;store.close();process.exit(0);});setTimeout(()=>process.exit(0),15000).unref();}
   process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
-  return {app,server,store,monitor,observations,sourceConfig,digest,desktop,dataDir};
+  return {app,server,store,monitor,observations,sourceConfig,resetClock,digest,desktop,dataDir};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer();

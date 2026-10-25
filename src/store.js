@@ -8,6 +8,7 @@ export class Store {
       CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, json TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS subscriptions(endpoint TEXT PRIMARY KEY,json TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS deliveries(event TEXT,endpoint TEXT,tries INTEGER DEFAULT 0,next INTEGER DEFAULT 0, PRIMARY KEY(event,endpoint));
+      CREATE TABLE IF NOT EXISTS desktop_deliveries(id TEXT PRIMARY KEY,json TEXT NOT NULL,tries INTEGER DEFAULT 0,next INTEGER DEFAULT 0);
       CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT);`);
   }
   get(key) { return this.db.prepare('SELECT value FROM meta WHERE key=?').get(key)?.value; }
@@ -47,5 +48,14 @@ export class Store {
   jobs() {return this.db.prepare('SELECT d.*,s.json FROM deliveries d JOIN subscriptions s ON d.endpoint=s.endpoint WHERE d.next<=? AND d.tries<8 LIMIT 100').all(Date.now());}
   success(job) {this.db.prepare('DELETE FROM deliveries WHERE event=? AND endpoint=?').run(job.event,job.endpoint);}
   retry(job) {this.db.prepare('UPDATE deliveries SET tries=tries+1,next=? WHERE event=? AND endpoint=?').run(Date.now()+Math.min(3600000,30000*2**job.tries),job.event,job.endpoint);}
+  queueDesktop(event) {this.db.prepare('INSERT OR IGNORE INTO desktop_deliveries(id,json) VALUES(?,?)').run(event.id,JSON.stringify(event));}
+  desktopJobs() {return this.db.prepare('SELECT * FROM desktop_deliveries ORDER BY next,id').all();}
+  removeDesktop(id) {this.db.prepare('DELETE FROM desktop_deliveries WHERE id=?').run(id);}
+  completeDesktop(id,at) {
+    this.db.exec('BEGIN');
+    try{this.set('desktopSent:'+id,at);this.removeDesktop(id);this.db.exec('COMMIT');}
+    catch(error){this.db.exec('ROLLBACK');throw error;}
+  }
+  retryDesktop(job,now) {this.db.prepare('UPDATE desktop_deliveries SET tries=tries+1,next=? WHERE id=?').run(now+Math.min(3600000,30000*2**job.tries),job.id);}
   close() {this.db.close();}
 }
