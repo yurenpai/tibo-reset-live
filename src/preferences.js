@@ -27,6 +27,7 @@ export function topicOf(event) {
   switch (event?.kind) {
     case 'observed': return 'observed';
     case 'confirmed': return 'confirmed';
+    case 'timed': return 'confirmed';
     case 'scheduled': return 'scheduled';
     case 'banked': return 'scheduled';
     default: return null;

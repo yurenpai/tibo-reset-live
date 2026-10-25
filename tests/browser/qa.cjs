@@ -45,7 +45,7 @@ const base=process.env.QA_BASE_URL||'http://localhost:8788';
  assert.equal(await page.locator('.plan-today .plan-day-number').innerText(),'DAY 19');
  await page.locator('.plan-day').nth(17).click();
  const detail=await page.locator('#plan-detail').innerText();
- for(const t of ['2026-10-22','2026-10-23 12:46','北京时间','PT','未确认完成'])assert(detail.includes(t),'计划详情缺少 '+t);
+ for(const t of ['2026-10-22','2026-10-23 12:46','北京时间','PT','等待截止时间'])assert(detail.includes(t),'计划详情缺少 '+t);
  assert((await page.locator('#plan-source').getAttribute('href')).endsWith('2106845241357824205'));
  await page.locator('.plan-day').nth(27).click();assert((await page.locator('#plan-detail').innerText()).includes('待观察'));
  await page.locator('.plan-table-wrap summary').click();assert.equal(await page.locator('#plan-table tr').count(),28);

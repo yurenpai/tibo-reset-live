@@ -1,5 +1,7 @@
 .observed{color:#167b83}
 .badge.observed{background:#d9f0f0}
+.timed{color:#8c590f}
+.badge.timed{background:#f8dfa2}
 .time-window{display:grid;gap:5px;margin:12px 0;padding:11px 12px;border-radius:9px;background:#f4f1e7;border:1px solid #eadfbd}
 .time-window span{font-size:11px;color:#8d6a22;letter-spacing:.08em}
 .time-window strong{font-size:13px;color:#725417}

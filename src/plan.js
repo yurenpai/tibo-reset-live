@@ -3,7 +3,7 @@ import { wallTimeToUtc, PACIFIC_ZONE } from './schedule.js';
 import { dateInZone } from '../public/content.js';
 export { filterEvents } from '../public/content.js';
 export const PLAN_TYPES=['feature','reset','feature_reset','upcoming'];
-export const PLAN_STATUSES=['planned','reported','confirmed','observed','pending'];
+export const PLAN_STATUSES=['planned','reported','confirmed','observed','pending','triggered'];
 const pad=n=>String(n).padStart(2,'0');
 export function parseYmd(ymd){const [year,month,day]=String(ymd).split('-').map(Number);return {year,month,day};}
 export function ptMidnight(date){return wallTimeToUtc({...date,hour:0},PACIFIC_ZONE);}
@@ -33,6 +33,8 @@ export function buildPlan(doc,now=Date.now(),events=[]){
  const byId=new Map(events.map(e=>[e.id,e]));
  const sourceDays=new Map([...entries.values()].map(e=>[e.sourceUrl,e.day]));
  function eventDay(e,seen=new Set()){
+  // 功能回复属于自身发布日；只有重置证据需要沿原预告归日。
+  if(e.topic==='feature'||e.kind==='feature')return dayOf(e.at,plan);
   if(seen.has(e.id))return dayOf(e.at,plan);seen.add(e.id);
   if(e.announcementSource&&sourceDays.has(e.announcementSource))return sourceDays.get(e.announcementSource);
   const parent=byId.get(e.parent);
@@ -44,25 +46,25 @@ export function buildPlan(doc,now=Date.now(),events=[]){
  for(const e of valid){const day=eventDay(e);if(groups.has(day))groups.get(day).push(e);}
  const days=cal.map(d=>{
   const entry=entries.get(d.day),items=groups.get(d.day),features=items.filter(e=>e.topic==='feature');
-  const resets=items.filter(e=>e.topic!=='feature'&&['confirmed','observed','scheduled','banked'].includes(e.kind));
+  const resets=items.filter(e=>e.topic!=='feature'&&['confirmed','observed','scheduled','banked','timed'].includes(e.kind));
   const hasFeature=features.length>0||['feature','feature_reset'].includes(entry?.plannedType);
   const hasReset=resets.length>0||['reset','feature_reset'].includes(entry?.plannedType);
-  const official=resets.some(e=>e.kind==='confirmed'),observed=resets.some(e=>e.kind==='observed');
-  const resetStatus=official?'confirmed':observed?'observed':resets.some(e=>e.kind==='scheduled')?'planned':hasReset?'reported':null;
+  const official=resets.some(e=>e.kind==='confirmed'),observed=resets.some(e=>e.kind==='observed'),timed=resets.some(e=>e.kind==='timed');
+  const resetStatus=official?'confirmed':observed?'observed':timed?'triggered':resets.some(e=>e.kind==='scheduled')?'planned':hasReset?'reported':null;
   const plannedType=hasFeature&&hasReset?'feature_reset':hasFeature?'feature':hasReset?'reset':'upcoming';
   const newest=list=>[...list].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0];
   const recent=newest(features)||newest(resets);
-  const sourceAt=entry?.sourceAt||recent?.at||null;
+  const sourceAt=entry?.sourceAt||recent?.announcementAt||recent?.at||null;
   const status=plannedType==='upcoming'?'pending':hasFeature?'reported':resetStatus||entry?.status||'reported';
   return {...d,isToday:d.date===todayPT,plannedType,status,resetStatus,
    title:entry?.title||recent?.title||'待观察',
    summary:entry?.summary||recent?.note||(d.date<todayPT?'尚未收录可核对的原帖，不代表当天没有更新。':d.date===todayPT?'今天的内容待观察，未收录不代表没有更新。':'未来内容待观察；计划声明不是每日必然完成的保证。'),
    sourceUrl:entry?.sourceUrl||recent?.url||null,sourceAt,
-   evidence:official?'official':observed?'community':hasFeature?'official':hasReset?'announcement':null,
+   evidence:official?'official':observed?'community':timed?'schedule':hasFeature?'official':hasReset?'announcement':null,
    events:items,
    featureRecorded:hasFeature&&!!(entry?.sourceUrl||features.length),
-   confirmedReset:official,observedReset:observed&&!official};
+   confirmedReset:official,observedReset:observed&&!official,timedReset:timed&&!official&&!observed};
  });
  const done=days.filter(d=>d.date<=todayPT).length;
- return {plan,days,todayPT,progress:planProgress(now,plan),counts:{done,remaining:plan.days-done,resets:days.filter(d=>d.confirmedReset).length,observedResets:days.filter(d=>d.observedReset).length,features:days.filter(d=>d.featureRecorded).length,recordedDays:days.filter(d=>d.sourceUrl).length}};
+ return {plan,days,todayPT,progress:planProgress(now,plan),counts:{done,remaining:plan.days-done,resets:days.filter(d=>d.confirmedReset).length,observedResets:days.filter(d=>d.observedReset).length,timedResets:days.filter(d=>d.timedReset).length,features:days.filter(d=>d.featureRecorded).length,recordedDays:days.filter(d=>d.sourceUrl).length}};
 }

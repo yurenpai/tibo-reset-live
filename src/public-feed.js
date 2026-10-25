@@ -21,7 +21,7 @@ export function normalizePollMode(value,legacySeconds) {
 export function hasPendingReset(events,now=Date.now()) {
   const valid=events.filter(e=>(!e.topic||e.topic==='reset')&&Number.isFinite(Date.parse(e.at))&&Date.parse(e.at)<=now);
   const latest=kinds=>valid.filter(e=>kinds.includes(e.kind)).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0]||null;
-  const announcement=latest(['scheduled']),completed=latest(['confirmed','observed']);
+  const announcement=latest(['scheduled']),completed=latest(['confirmed','observed','timed']);
   // 旧预告继续留在日历中，但最多为它加速检查 48 小时。
   return !!announcement&&now-Date.parse(announcement.at)<48*3600000&&(!completed||Date.parse(announcement.at)>Date.parse(completed.at));
 }

@@ -1,5 +1,5 @@
 // 内容筛选不参与通知决策；服务器使用独立的 preferences.js。
-export const RESET_KINDS = ['confirmed','observed','scheduled','banked'];
+export const RESET_KINDS = ['confirmed','observed','scheduled','banked','timed'];
 export function filterEvents(events, view = 'reset') {
   const visible=events.filter(e=>e.topic!=='plan'&&e.kind!=='candidate');
   if(view==='reset')return visible.filter(e=>e.topic!=='feature'&&RESET_KINDS.includes(e.kind));

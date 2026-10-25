@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { classifyEvents } from './classify.js';
 import { deriveSchedule } from './schedule.js';
 
-const SCHEDULE_FIELDS = ['windowStart', 'windowEnd', 'literalEnd', 'timeZone', 'timeNote'];
+const SCHEDULE_FIELDS = ['windowStart', 'windowEnd', 'literalEnd', 'triggerAt', 'timeZone', 'timeNote'];
 
 // Tibo 常在主帖下回复补充细节（例如“Lands tomorrow before 10am PST”）。
 // 同一证据层级的补充说明并入父帖，避免同一件事在日历里出现两条记录。
@@ -42,6 +42,7 @@ export class Monitor {
     while (id && !seen.has(id) && seen.size < 64) {
       seen.add(id);
       const direct = this.store.event(id);
+      if(direct?.mergedInto){id=direct.mergedInto;continue;}
       if (direct?.topic !== 'feature' && ['scheduled', 'confirmed', 'banked', 'candidate'].includes(direct?.kind)) return direct;
       const merged = events.find(e => e.topic !== 'feature' && ['scheduled', 'confirmed', 'banked', 'candidate'].includes(e.kind) && e.followUps?.some(f => f.id === id));
       if (merged) return merged;
@@ -64,16 +65,18 @@ export class Monitor {
     if(this.stopped)return;
     const parentEvent=reply?this.resolveParentEvent(reply):null;
     const results=classifyEvents(p,parentEvent);
-    const schedule=deriveSchedule(p.text,p.created_at)||{};
+    const schedule=deriveSchedule(p.text,p.created_at,parentEvent?.at||p.created_at)||{};
     const url=`https://x.com/${this.handle}/status/${p.id}`;
     for (const result of results) {
       const id = result.topic === 'feature' ? `${p.id}-feature` : p.id;
       // 仅同主题、同证据层级的补充合并；Done 升级确认时始终新建独立事件。
       if(result.topic==='reset'&&parentEvent&&parentEvent.kind===result.kind&&parentEvent.status===result.status&&!this.store.event(id)){
-        this.store.upsertEvent(mergeFollowUp(parentEvent,{id:p.id,at:p.created_at,url,excerpt:p.text.slice(0,500),...schedule}));
+        const merged=mergeFollowUp(parentEvent,{id:p.id,at:p.created_at,url,excerpt:p.text.slice(0,500),...schedule});
+        if(schedule.triggerAt)merged.scheduleNotify=parentEvent.scheduleNotify===true||notify;
+        this.store.upsertEvent(merged);
         continue;
       }
-      const e={id,at:p.created_at,...result,...(result.topic==='reset'?schedule:{}),parent:result.topic==='reset'?(parentEvent?.id||reply||null):(reply||null),replyTo:reply||null,sourceType:reply?'reply':'post',url,excerpt:p.text.slice(0,500),...(p.via?{via:p.via}:{})};
+      const e={id,at:p.created_at,...result,...(result.topic==='reset'?schedule:{}),...(result.kind==='scheduled'?{scheduleNotify:notify}:{}),parent:result.topic==='reset'?(parentEvent?.id||reply||null):(reply||null),replyTo:reply||null,sourceType:reply?'reply':'post',url,excerpt:p.text.slice(0,500),...(p.via?{via:p.via}:{})};
       if(this.store.addEvent(e,notify&&result.kind!=='candidate'))this.onEvent(e,{notify:notify&&result.kind!=='candidate'});
     }
     this.store.savePost(p);

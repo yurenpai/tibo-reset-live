@@ -10,7 +10,10 @@ export class DesktopNotifications {
   save(input){
     const before=this.settings();
     const settings={enabled:typeof input?.enabled==='boolean'?input.enabled:before.enabled,preferences:normalizePreferences({...before.preferences,...input?.preferences})};
-    this.store.set('desktopSettings',JSON.stringify(settings));return settings;
+    this.store.set('desktopSettings',JSON.stringify(settings));
+    // 关闭提醒时取消待发任务，重新开启不补发关闭期间的旧通知。
+    for(const job of this.store.desktopJobs())if(!settings.enabled||!wantsNotification(settings.preferences,JSON.parse(job.json)))this.store.removeDesktop(job.id);
+    return settings;
   }
   platformSupport(){
     if(!['win32','darwin','linux'].includes(this.platform))return {supported:false,backend:'unsupported',hint:'当前系统不支持本机桌面通知'};
@@ -39,18 +42,41 @@ export class DesktopNotifications {
       this.state.lastAccepted=new Date(this.now()).toISOString();this.state.error=null;
     }catch(error){this.state.error=error.message;throw error;}
   }
-  event(event){
-    const settings=this.settings();
-    if(!settings.enabled||!wantsNotification(settings.preferences,event)||this.store.get('desktopSent:'+event.id))return;
-    // 休眠/断网恢复后仅提醒最近 6 小时的动态，旧记录仍收录到日历。
-    const age=this.now()-Date.parse(event.at);
-    if(!Number.isFinite(age)||age<0||age>6*3600000)return;
-    this.chain=this.chain.catch(()=>{}).then(async()=>{
-      const current=this.settings();
-      if(!current.enabled||!wantsNotification(current.preferences,event)||this.store.get('desktopSent:'+event.id))return;
-      await this.notify(event.title,(event.note||'发现新的动态')+(event.via?'（公共镜像收录）':''));
-      this.store.set('desktopSent:'+event.id,new Date(this.now()).toISOString());
-    }).catch(error=>{this.state.error=error.message;});
+  eligible(event){
+    const settings=this.settings(),age=this.now()-Date.parse(event.at);
+    return settings.enabled&&wantsNotification(settings.preferences,event)&&!this.store.get('desktopSent:'+event.id)&&Number.isFinite(age)&&age>=0&&age<=6*3600000;
   }
+  event(event){
+    if(this.stopped||!this.eligible(event))return;
+    this.store.queueDesktop(event);
+    return this.retryPending();
+  }
+  retryPending(){
+    this.chain=this.chain.catch(()=>{}).then(async()=>{
+      for(const job of this.store.desktopJobs()){
+        if(this.stopped)return;
+        const event=JSON.parse(job.json);
+        if(!this.eligible(event)||job.tries>=8){this.store.removeDesktop(job.id);continue;}
+        if(job.next>this.now())continue;
+        try{
+          await this.notify(event.title,(event.note||'发现新的动态')+(event.via?'（公共镜像收录）':''));
+          // 系统接受后记成功；该标记和队列删除在同一事务中提交。
+          this.store.completeDesktop(job.id,new Date(this.now()).toISOString());
+        }catch(error){
+          this.state.error=error.message;
+          this.store.retryDesktop(job,this.now());
+        }
+      }
+    });
+    return this.chain;
+  }
+  start(){
+    if(this.timer)return;
+    this.stopped=false;
+    this.retryPending().catch(error=>{this.state.error=error.message;});
+    this.timer=setInterval(()=>this.retryPending().catch(error=>{this.state.error=error.message;}),30000);
+    this.timer.unref?.();
+  }
+  stop(){this.stopped=true;clearInterval(this.timer);this.timer=null;return this.chain;}
   async test(){await this.notify('Tibo 重置日历 · 测试通知','如果你看到了这条消息，本机桌面通知可用。关闭网页后，请让后台进程继续运行。');return this.status();}
 }

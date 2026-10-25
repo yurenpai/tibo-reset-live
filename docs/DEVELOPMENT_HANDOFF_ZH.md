@@ -2,15 +2,15 @@
 
 > 交接日期：2026-10-25，Asia/Shanghai。本文对应当前本地工作区，不等于 GitHub 上已提交的版本。
 >
-> 当前基线：`main` / `b756fbd`（已提交的目录整理版本）加下文列出的 16 个本地未提交文件。本次交接针对来源配置功能开发完成后的代码；此刻尚未替用户提交或推送这些改动。之后若用户已经推送，请以实时 Git 状态和新提交为准。
+> 当前基线：`main` / `12ba95a`（来源配置与即时切换版本）加下文列出的本地未提交改动。本次交接以当前工作区为准；此刻尚未替用户提交或推送这些改动。之后若用户已经推送，请以实时 Git 状态和新提交为准。
 >
-> 最新功能：本机「配置数据来源」支持主源、最多两个备用源、最多五个社区接口及官方 API Token，提供只读连接测试、保存立即切换、恢复默认草稿与重启恢复。**R4 已修复**；R1/R2/R3 尚未修复，R5 仍是待验证风险。最近验证：83 项 Node 测试及五组浏览器检查通过；真实官方流和三平台桌面验收限制见第 8 节。
+> 最新功能：有明确截止时间的官方重置预告会由后台到点自动触发日历、狂欢、人物恢复和提醒，无需等待第二条 `Done`；证据明确标为“按官方预告时间触发”。**R1、R2、R4 已修复**；R3 尚未修复，R5 仍是待验证风险。最近验证：95 项 Node 测试及六组浏览器检查通过；真实官方流和三平台桌面验收限制见第 8 节。
 
 ## 1. 先读这里
 
 项目是供用户从 GitHub 下载、自行在电脑上运行的中文 Codex 额度重置日历。作者不提供公共后台。默认不登录 X，不使用 Cookies、Token 或 Telegram；本机后台读取第三方公开 JSON，再通过操作系统发送桌面通知。关闭网页后后台继续工作；电脑关机、休眠、断网时不能实时监测。
 
-当前代码已具备三平台启动入口、用户数据目录、后台守护、免登录轮询、主备源机制、逐源状态、来源配置面板、28 天计划和人物五阶段。需要优先处理的两个问题：**功能回复可能归到父帖的旧计划日；桌面通知发送失败后没有自动重试。** 此外有自启环境继承风险；官方 API 停止期间重试已在配置热切换开发时修复，详见第 9 节。
+当前代码已具备三平台启动入口、用户数据目录、后台守护、免登录轮询、主备源机制、逐源状态、来源配置面板、28 天计划、预告到点时钟和人物五阶段。跨日功能归日与桌面通知失败重试已修复并有回归测试；仍需优先处理自启环境继承风险，并验证 Windows 新旧停止路径风险，详见第 9 节。
 
 接手时请保留当前未提交改动、`.env`、用户数据库和偏好；先确认差异，不要用 GitHub 的旧版本覆盖本地代码。提交、推送由用户决定。
 
@@ -20,12 +20,12 @@
 | --- | --- |
 | 本地目录 | `C:\Users\Administrator\Desktop\weixin\tibo-reset-live` |
 | 远程仓库 | <https://github.com/yurenpai/tibo-reset-live> |
-| 分支 / HEAD | `main` / `b756fbd`（本次未提交改动的父版本） |
-| HEAD 描述 | `精简根目录入口，整理自启脚本并更新中文文档` |
+| 分支 / HEAD | `main` / `12ba95a`（本次未提交改动的父版本） |
+| HEAD 描述 | `新增本机来源配置与即时切换，完善密钥保护并更新开发交接` |
 | 运行环境 | Windows，Node.js `v24.21.0`，npm `11.19.0` |
 | 声明支持的 Node | `^24.15.0 || >=26.0.0`，不是任意 24.x 或 25.x |
-| 当前工作区 | 12 个已有文件修改、4 个未跟踪新文件，共 16 个路径；详见第 10 节 |
-| 暂存区 | 此次来源配置开发内容尚未暂存、提交或推送 |
+| 当前工作区 | 19 个已有文件修改、4 个未跟踪新文件，共 23 个路径；详见第 10 节。提交前以实时 `git status` 为准 |
+| 暂存区 | 当前改动尚未暂存、提交或推送 |
 
 审阅覆盖项目自己的后端、前端、CSS、启动与自启脚本、测试、种子资料结构、依赖声明、Docker 和 CI 配置。初次审阅基线曾包含 87 个非忽略文件，后续新增来源配置模块与测试；不要用这个历史数量判断当前是否漏文件。没有逐行审计 `node_modules`、第三方依赖源码、图片二进制、私有 `.env` 和用户数据库，也没有在本轮重新向 X 核验全部历史资料。
 
@@ -33,15 +33,15 @@
 
 ## 3. 产品规则：后续修改不能破坏
 
-1. **预告不等于完成。** 最新未落地预告持续显示“重置已宣布，等它落地”，不能因为时间窗口经过、刷新或重启就退回普通等待室。只有更新的完成证据才改变完成状态。
+1. **有明确截止时间的预告到点自动触发。** 截止前持续显示“重置已宣布”；到点生成独立 `timed` 记录，自动进入狂欢、人物恢复和提醒，不要求第二条 `Done`。没有明确截止时间时继续等待。
 2. 官方完成、社区观测、未来预告、重置卡、功能发布分开。`banked` 是卡，不是自动到账；即使其 `status` 为 `confirmed`，确认的也只是卡。
 3. `confirmed` 表示分类器认为原文是官方完成陈述；若经公共镜像收录，仍需保留 `via`，不能宣称本项目通过官方 API 独立验证过原文。社区观测始终标明不是 Tibo 官方确认，也不保证每个账号均已到账。
 4. 默认看重置；另有“28 天计划”和“全部动态”。页面筛选与通知偏好独立，切换视图不能偷偷开启功能通知。
-5. 默认通知类别为官方确认、社区观测；预告/重置卡、功能、每日摘要默认关闭。还需用户主动开启本机通知总开关。
-6. 完成后庆祝持续 24 小时；官方完整狂欢、社区观测轻庆祝。人物按距最近完成记录的实际时间进入 Day 1–Day 5，第五阶段封顶。功能、预告和发卡不能恢复清晰人物。外观预览不修改真实记录。
+5. 默认通知类别为“官方确认 / 预告到点”和社区观测；预告/重置卡、功能、每日摘要默认关闭。还需用户主动开启本机通知总开关。
+6. 官方确认或预告到点后完整狂欢 24 小时，社区观测使用轻庆祝。人物按距最近触发/完成记录的实际时间进入 Day 1–Day 5，第五阶段封顶。未到点预告、发卡和功能不能恢复清晰人物。外观预览不修改真实记录。
 7. 28 天计划为 **2026-10-05 至 2026-11-01，按 PT（`America/Los_Angeles`）日期**；月历按北京时间。11 月 1 日 DST 结束，当地日长 25 小时，不能固定加减 24 小时。
 8. “已进行 N/28 天”是时间进度；“未收录”不代表当天没更新；计划条目颜色或声明不能生成官方重置完成次数。
-9. 首次读取和历史回填静默，不群发旧通知。本机恢复后仅提醒最近 6 小时的新事件。数据库与去重记录必须跨重启保留。
+9. 首次读取和历史回填静默，不群发旧通知。本机恢复后补算已经到点的预告，仅提醒最近 6 小时的新事件；事件 ID、桌面待发队列和成功去重都跨重启保留。
 10. 当前免登录路径是分钟级定时检查，第三方也可能延迟、遗漏或中断；不能对外描述成 X 发帖后秒级必达。
 
 ## 4. 技术结构与数据流
@@ -57,9 +57,12 @@ flowchart TD
   Official[可选官方 X API] --> Classifier
   Community[可选社区 JSON] --> Observed[观测验证与去重]
   Classifier --> DB[(SQLite)]
+  DB --> Clock[ResetClock：按明确截止时间触发]
+  Clock --> DB
   Observed --> DB
   DB --> Calendar[本地 API → 中文月历 / 28 天计划]
   Classifier --> Desktop[桌面通知偏好与成功去重]
+  Clock --> Desktop
   Observed --> Desktop
   DB --> WebPush[可选云端 Web Push 队列]
 ```
@@ -68,7 +71,7 @@ flowchart TD
 
 | 文件 | 作用 / 修改时关注点 |
 | --- | --- |
-| `src/server.js` | 历史种子、Express API、静态页、安全头、Web Push 投递、PT 18:00 每日摘要、停止流程 |
+| `src/server.js` | 历史种子、Express API、静态页、安全头、ResetClock、Web Push 投递、PT 18:00 每日摘要、停止流程 |
 | `src/local.js` | 本机入口，强制本机模式、绑定 `127.0.0.1`、匹配 localhost Origin |
 | `src/local-service.js` | 用户级守护，工作进程退出后退避重启，最长约 30 秒；令牌校验停止，等待子进程退出 |
 | `src/paths.js` | 项目与数据目录、旧库迁移；本机和云端默认路径不同 |
@@ -77,11 +80,12 @@ flowchart TD
 | `src/monitor.js` | 串行处理、作者过滤、父帖上下文、多层回复合并；可选官方 API 流与补漏 |
 | `src/classify.js` | 否定/预告/完成/发卡/功能分类、事件规范化、Web Push 订阅地址校验 |
 | `src/store.js` | SQLite 表与持久化、事件和帖子去重、Web Push 投递队列 |
-| `src/desktop.js` | `node-notifier`、通知偏好、系统支持检查、6 小时过滤、成功去重；目前没有持久失败重试队列 |
+| `src/reset-clock.js` | 旧误判修复、明确截止时间扫描、稳定 `timed-<预告ID>` 事件、首次静默与六小时补提醒 |
+| `src/desktop.js` | `node-notifier`、通知偏好、系统支持检查、6 小时过滤、持久失败重试队列和成功去重 |
 | `src/observations.js` | 社区 JSON 验证、逐源状态与退避、取消请求、跨源同凭据去重 |
 | `src/plan.js` | 28 日骨架、事件归日、静态与动态内容合并、统计；见 R1 |
 | `src/preferences.js` | 所有通知类型的统一判定；重置卡归预告开关 |
-| `src/schedule.js` | IANA 时区、PT 观察窗口、PST/PDT 字面歧义；窗口不是到账定时器 |
+| `src/schedule.js` | IANA 时区、PT 观察窗口、PST/PDT 字面触发时间；重置卡时间不进入 ResetClock |
 
 ### 前端与布局
 
@@ -160,9 +164,9 @@ Windows `scripts/start-local.ps1` 必要时下载官方便携 Node 24 并校验 
 | 云端 | 项目 `data/`；Docker 挂载 `/app/data` |
 | 显式覆盖 | `TIBO_DATA_DIR` 优先；相对路径从项目根解析 |
 
-SQLite `calendar.sqlite` 的表：`posts`、`events`、`subscriptions`、`deliveries`、`meta`。其中 `deliveries` 是 Web Push 队列，不能当作桌面失败重试已经实现的证据。
+SQLite `calendar.sqlite` 的表：`posts`、`events`、`subscriptions`、`deliveries`、`desktop_deliveries`、`meta`。`deliveries` 是 Web Push 队列；`desktop_deliveries` 是本机系统通知的持久待发队列，失败后指数退避，最多 8 次，并受六小时有效期和最新偏好约束。
 
-主要 meta 键：`desktopSettings`、`desktopSent:<eventId>`、`publicPollMode`、`publicFeedInitialized`、`publicFeedCursor`、官方 `cursor`、`lastCheck`、`observationCheck`、`observationError`。事件正文为 JSON，保留 `topic/evidence/status/kind/parent/followUps/via` 等；混合帖功能事件使用 `<原帖ID>-feature`。
+主要 meta 键：`desktopSettings`、`desktopSent:<eventId>`、`resetClockInitialized`、`resetScheduleRepair:v1`、`publicPollMode`、`publicFeedInitialized`、`publicFeedCursor`、官方 `cursor`、`lastCheck`、`observationCheck`、`observationError`。事件正文为 JSON，保留 `topic/evidence/status/kind/parent/followUps/via` 等；预告到点使用稳定 ID `timed-<预告ID>`，混合帖功能事件使用 `<原帖ID>-feature`。
 
 实例文件包括 `local-instance.json`、`local-service.json`、`local-stop.json`、`launcher.lock`，以及日志和迁移记录。令牌用于停止握手，不能公开复制这些运行文件。另有来源配置 `local-sources.json`：保存完整来源及明文 API Token，Unix 权限 `0600`，Git/Docker 忽略，不应分享。此文件不随数据库迁移/清理而重写；删除它会恢复环境中的来源配置。日志目前没有轮转，属于后续维护事项。
 
@@ -218,15 +222,16 @@ SQLite `calendar.sqlite` 的表：`posts`、`events`、`subscriptions`、`delive
 
 | 验证 | 结果与范围 |
 | --- | --- |
-| `npm test` | 最新来源设置版本 **83/83 通过**；初次审阅为 73 项，新增 10 项配置、持久化、热切换、密钥和停止回归测试 |
+| `npm test` | **95/95 通过**；包括来源配置、预告到点、PST/PDT/PT 换算、重启补算/去重、跨日功能归日和桌面失败持久重试 |
 | `npm run test:local` | 通过：来源未配置/失败提示、频率保存恢复与草稿、预告持续/完成狂欢、后台通知模拟去重、三视图手机布局等 |
 | `qa.cjs` | 隔离的内存数据库、种子与固定后端时间下通过：月历边界、三视图、计划/双时区/统计/偏好、来源隔离、桌面和手机布局 |
 | `festival-qa.cjs` | 同一隔离夹具下通过：狂欢、第五阶段、预览退出、人物收起、手机与减少动态效果 |
 | `node tests/browser/source-qa.cjs` | 通过：主源 429 后备用状态、独立冷却、社区部分 503、未使用备用状态、手机来源卡片无横向溢出 |
 | `node tests/browser/source-config-qa.cjs` | 通过：草稿与测试隔离、公共/官方模式切换、Token 不回显、保存失败保留、移动布局、默认恢复、关闭页面通知和重启恢复去重；官方连接使用模拟器 |
+| `node tests/browser/reset-clock-qa.cjs` | 通过：11:39 宣布与 16:00 触发分开显示、关页后台通知、到点狂欢、人物 Day 1、PT Day 20、手机布局和重启去重 |
 | 脚本语法 | PowerShell AST 解析、Unix `sh -n` 均通过 |
 | Windows 实际启动 | 此前开发阶段用临时数据目录验证启动、重复启动、查询与停止；本轮最终 Node 测试也验证共享控制器生命周期。没有再次改动用户当前自启项 |
-| R1–R4 定向复现 | 4 个均复现，全部使用内存存储、mock 或配置生成器，不向用户真实系统发通知 |
+| R1/R2/R4 回归 | 均已修复并通过正式测试；R3 仍可复现，R5 仍是未端到端确认的候选风险 |
 
 **尚未证明的内容：** macOS/Linux 真实通知权限、登录自启、睡眠恢复；真实官方 X API 流；公网 HTTPS Web Push；Docker 构建运行；GitHub Actions 的远程结果。CI 配置已写三系统矩阵，但本轮没有读取实际运行结果，不能称为远程三平台验收完成。CI 主要测 Node 与脚本，并不等于操作系统弹窗验收。
 
@@ -249,21 +254,24 @@ npm install --no-save --package-lock=false playwright
 npm run test:local
 node tests/browser/source-qa.cjs
 node tests/browser/source-config-qa.cjs
+node tests/browser/reset-clock-qa.cjs
 ```
 
 现有脚本默认查 Windows Chrome；`qa.cjs/local-qa.cjs/source-qa.cjs` 可设置 `CHROME_PATH`，`festival-qa.cjs` 仍写死 Windows Chrome，属于跨平台测试待补项。不要因为 Node 的三系统测试存在，就认为浏览器脚本也跨平台。
 
 `test:ui` 和 `test:festival` 需要先有服务器，可用 `QA_BASE_URL` 指定；它们依赖特定历史日期和种子，不宜直接对随时变化的生产数据运行。本轮使用 `Store(':memory:')`、`seedHistoricalEvents`、固定 `now=2026-10-23T09:30:00Z`、随机本地端口的 `createApp`，以异步子进程运行这两个脚本。不要同步阻塞夹具服务器的 Node 事件循环。
 
-本机初次复核辅助程序在 `.artifacts/handoff/browser-review.mjs` 和 `review-repros.mjs`；该目录被 Git 忽略，**不会随仓库交接**，不能当成正式测试。前者仍可用固定夹具复跑主 QA 与狂欢 QA；后者断言的是初次缺陷表现，R4 修复后已不适合作为整体通过检查。R4 的正式回归已归入 `tests/source-config.test.js`，其余缺陷仍需补正式测试。
+本机初次复核辅助程序在 `.artifacts/handoff/browser-review.mjs` 和 `review-repros.mjs`；该目录被 Git 忽略，**不会随仓库交接**，不能当成正式测试。前者仍可用固定夹具复跑主 QA 与狂欢 QA。R1/R2 的正式回归在 `tests/handoff-regressions.test.js`，R4 在 `tests/source-config.test.js`，到点规则在 `tests/reset-clock.test.js` 与 `tests/browser/reset-clock-qa.cjs`。
 
 真机测试请另设临时 `TIBO_DATA_DIR` 并关闭旧库迁移，例如设置 `TIBO_SKIP_LEGACY_MIGRATION=1`；只停止该临时实例。不要清空默认用户数据目录、冒用用户真实订阅、向真实系统批量发测试消息。
 
 ## 9. 审阅发现：待修复问题
 
-以下优先级用于建议开发顺序；R1–R4 在初次审阅中定向复现，当时未计入 73 项现有测试。后续配置开发修复了 R4，并加入正式回归；R1–R3 尚待处理。
+以下编号保留初次审阅上下文。R1、R2、R4 已修复并有正式回归；R3 尚待处理，R5 仍需先端到端复现。
 
-### R1 · P1：功能回复被归入父帖旧日期
+### R1 · 已修复：功能回复被归入父帖旧日期
+
+修复说明：功能事件现在先按自身发布时间归 PT 日；只有重置证据沿原预告归日。`tests/handoff-regressions.test.js` 覆盖跨日、同日混合主题、跨日完成证据和循环父帖。
 
 - 位置：`src/plan.js:35`，`buildPlan` 内 `eventDay`。
 - 原因：所有事件都先沿 `parent` 找计划日，没有先排除功能事件；`monitor.js` 恰好会为功能回复保留 `parent`。
@@ -272,7 +280,9 @@ node tests/browser/source-config-qa.cjs
 - 建议：功能先按自身时间归 PT 日；仅为需要关联原预告的重置证据保留父帖归日。不要全局删除父帖逻辑。
 - 验收：同日与跨日功能回复、混合帖、跨日 Done 重置关联、循环父帖全部覆盖；修复不能把功能发布时间移动成父帖时间。
 
-### R2 · P1：桌面通知临时失败后不会自动重试
+### R2 · 已修复：桌面通知临时失败后不会自动重试
+
+修复说明：新增 `desktop_deliveries` 持久队列，失败按上限退避，启动和每 30 秒检查；发送前重查偏好、六小时有效期和成功去重。关闭对应偏好会移除待发项，成功标记与删除在同一事务中完成。`tests/handoff-regressions.test.js` 覆盖失败后重启恢复、只发一次、关闭偏好和过期清理。
 
 - 位置：`src/desktop.js:43` 的 `event`，结合 `src/public-feed.js` 的成功入库/游标推进。
 - 复现：内存 Store 开启桌面提醒，mock `send` 抛临时错误。先成功建立帖子 `100` 基线，再加入新完成帖 `101`，连续检查两次并等待 `desktop.chain`。发送调用只有 1 次；`publicFeedCursor=101`，`desktopSent:101` 未写入，错误保留，但后续不重试。
@@ -307,27 +317,24 @@ node tests/browser/source-config-qa.cjs
 
 建议构造隔离的新旧账本测试；优先让共享控制器统一解析路径，再谨慎进入旧版兼容分支。不要为修复此风险按名称杀全部 Node 或删除用户旧库。
 
-## 10. 本次来源配置开发的文件清单
+## 10. 本次预告到点与回归修复的文件清单
 
-本清单相对于 `b756fbd`。当前 12 个已有文件修改、4 个新文件；推送后这些路径会进入新提交，不再显示未提交。此前三平台入口归档、主备源机制和来源状态已在父版本中，不能当成本次新增。
+本清单相对于 `12ba95a`。当前预计 19 个已有文件修改、4 个新文件，共 23 个路径；推送前必须以实时 `git status --short` 核对。来源配置功能已经在父提交中，本次不要重复描述为新增。
 
 | 路径 | 本次变化 |
 | --- | --- |
-| `src/source-config.js`（新增） | 配置验证、私有文件持久化、热切换、只读连接测试 |
-| `public/source-config.js`（新增） | 表单加载、草稿、测试、保存、默认草稿和密钥不回显 |
-| `tests/source-config.test.js`（新增） | 10 项服务端测试，含持久化、热切换、Token 边界和 R4 回归 |
-| `tests/browser/source-config-qa.cjs`（新增） | 新配置流程、手机布局、后台通知与重启恢复的隔离浏览器验收 |
-| `src/server.js` | 注入本机配置管理器，新增三项接口与 `sourceConfigurable` 能力标志 |
-| `src/monitor.js` | 可注入 fetch；生命周期取消、停止保护，修复 R4 |
-| `public/index.html` | 新增配置面板、模式/地址/Token 输入及操作按钮 |
-| `public/app.js` | 初始化配置模块，刷新时显示配置入口 |
-| `public/source-settings.css` | 新面板、表单和手机布局样式 |
-| `public/source-status.js` | 将旧的“修改 .env”提示更新为面板入口说明 |
-| `.gitignore` / `.dockerignore` | 忽略 `local-sources.json` 与原子保存临时文件 |
-| `.env.example` | 说明本机页面来源配置优先于环境中的来源设置 |
-| `README.md` | 澄清机制与默认源的区别，加入配置入口与操作说明 |
-| `docs/ADVANCED_ZH.md` | 说明配置格式、优先级、凭证保存、API、测试与权限限制 |
-| `docs/DEVELOPMENT_HANDOFF_ZH.md` | 当前功能、修复状态、文件清单与后续接手顺序 |
+| `src/reset-clock.js`（新增） | 旧数据修正、明确截止扫描、稳定到点事件、首次静默、六小时补提醒和持久去重 |
+| `tests/reset-clock.test.js`（新增） | 8 项到点、时区、回复合并、重启、偏好、卡片隔离、计划归日和旧数据修复测试 |
+| `tests/browser/reset-clock-qa.cjs`（新增） | 11:39 / 16:00 分离、关页通知、狂欢、人物、PT 计划、手机布局及重启去重 |
+| `tests/handoff-regressions.test.js`（新增） | R1 跨日功能归日与 R2 桌面通知持久重试回归 |
+| `src/classify.js` / `src/schedule.js` / `src/monitor.js` | 识别预告及时间回复、计算 `triggerAt`、合并父帖；重置卡时间保持卡片语义 |
+| `src/server.js` / `src/preferences.js` / `src/public-feed.js` | 启动到点时钟、摘要与通知偏好映射、到点后恢复普通检查频率 |
+| `src/desktop.js` / `src/store.js` | 新增本机通知持久待发队列、退避、偏好/时效清理、事务去重 |
+| `src/plan.js` | 到点证据与计数；修复功能回复跨日错误，同时保留重置证据沿父预告归日 |
+| `public/app.js` / `public/theme.js` / `public/content.js` | 预告倒计时、到点狂欢与人物状态、宣布/触发时间分开展示、内容筛选 |
+| `public/index.html` / `public/plan-ui.js` / `public/evidence.css` | 新图例、状态、统计、详情文案和到点样式 |
+| `tests/browser/qa.cjs` | 更新明确截止时间的计划文案断言 |
+| `README.md` / `docs/ADVANCED_ZH.md` / 本文 | 同步产品规则、数据结构、测试结果、已修复与遗留问题 |
 
 根目录保留三平台 `start.* / stop.*`；7 个自启管理入口位于 `scripts/launchers/`，实际被系统自启引用的核心脚本路径未改变。不要把它们搬回根目录。
 
@@ -335,13 +342,13 @@ node tests/browser/source-config-qa.cjs
 
 ## 11. 给 Claude 的建议接手顺序
 
-1. 阅读本文、README、来源核查；用实时 Git 差异核对当前代码，避免把本地新增功能误当成远程已有功能。
-2. 为 R1/R2 增加能先失败的回归测试，再做最小修复。不要同时重写分类器、主题和启动体系。
-3. 处理 R3；保留 R4 已补的停止回归，隔离验证 R5 后再判断是否修改兼容路径。
+1. 阅读本文、README、来源核查；用实时 Git 差异核对当前代码，避免把未提交的到点时钟和 R1/R2 修复误当成远程已有功能。
+2. 保持 `tests/reset-clock.test.js`、`tests/handoff-regressions.test.js` 和专门浏览器验收通过；修改时间规则时必须同时验证 PST/PDT/PT、卡片隔离、重启补算和通知去重。
+3. 处理 R3；保留 R1/R2/R4 已补的回归，隔离验证 R5 后再判断是否修改兼容路径。
 4. 保留来源诚实提示；未找到可信备用前不把候选网站接成自动到账来源。
 5. 将 Playwright/固定日期夹具纳入可重复测试方案；再做 macOS/Linux 真机通知、自启与退出验收，最后查看真实 CI 结果。
 6. 需要发布时先交付可审阅差异和验证记录，由用户决定提交推送。来源设置 UI 已完成；打包安装器、日志轮转及 X 账号 OAuth 登录属于后续选题，本次没有实现。
 
 可直接复制给 Claude：
 
-> 请先阅读 `docs/DEVELOPMENT_HANDOFF_ZH.md`，以当前本地工作区为准，检查 Git 未提交改动，不要覆盖另一会话新增的功能。先核对并复现第 9 节尚未修复的问题，优先为 R1（跨日功能回复归日）和 R2（桌面通知失败重试）补回归测试后做最小修复；R3 随后处理，R4 已修复请保持回归通过，R5 先验证再改。保留来源配置面板与热切换、免 X 登录、本机自运行、预告持续显示、官方与社区证据区分、PT/北京时间以及用户数据迁移规则。不要清理用户数据库或擅自提交推送。完成后用中文说明改动文件、测试结果及仍未实测的平台限制。
+> 请先阅读 `docs/DEVELOPMENT_HANDOFF_ZH.md`，以当前本地工作区为准，检查 Git 未提交改动，不要覆盖另一会话新增的功能。当前规则是：官方预告给出明确截止时间后，到点自动触发日历、狂欢、人物恢复和提醒，不要求第二条 Done；证据显示“按官方预告时间触发”，宣布时间与触发时间分开。R1、R2、R4 已修复，请保持回归；接下来处理 R3，R5 先验证再改。保留来源配置面板与热切换、免 X 登录、本机自运行、重置卡隔离、官方/到点/社区证据区分、PT/北京时间以及用户数据迁移规则。不要清理用户数据库或擅自提交推送。完成后用中文说明改动文件、测试结果及仍未实测的平台限制。

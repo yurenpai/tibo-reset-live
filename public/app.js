@@ -24,14 +24,14 @@ function renderAppearance(){
  $('#mascot-exit-preview').hidden=!state.preview;
  $('#festival-title').replaceChildren();
  const full=state.mood==='full',soft=state.mood==='soft';
- const lines=state.pending?['重置已宣布，','等它落地。']:full?['赞美 Tibo，','额度复活！']:soft?['观测到账，','也要庆祝！']:['等一个重置，','盼一场狂欢。'];
+ const lines=state.pending?['重置已宣布，','等它落地。']:state.timedOnly&&full?['时间已到，','额度复活！']:full?['赞美 Tibo，','额度复活！']:soft?['观测到账，','也要庆祝！']:['等一个重置，','盼一场狂欢。'];
  $('#festival-title').append(lines[0],document.createElement('br'),lines[1]);
- $('#festival-kicker').textContent=state.pending?'RESET ANNOUNCED · 已宣布，持续跟进':full?'RESET FESTIVAL · 官方确认狂欢':soft?'RESET FESTIVAL · 社区观测到账':'THE WAITING ROOM · 等待下一次重置';
- $('#festival-description').textContent=state.pending?(state.overdue?'预告窗口已过，目前尚未收录新的到账证据。预告会继续保留，等待官方确认或社区观测；不会自动当成已经重置。':'Tibo 已宣布下一次重置。这里会保留预告及预计时间，收到到账证据后再进入狂欢。'):full?'Tibo 已官方确认重置。金币、光晕和彩屑已经就位，今天值得最高画质。':soft?'社区记录已观测到重置到账，金色和彩屑照常庆祝！证据来自社区观测，不冒充 Tibo 的官方完成确认。':'有重置的日子，值得庆祝。没有重置的日子，就看 Tibo 逐渐变成简笔画。';
- $('#festival-status').textContent=state.preview?'正在预览外观 · 不代表真实重置':state.pending?'宣布于 '+bjt.format(new Date(state.announcement.at))+'（北京时间）':state.last?(state.last.kind==='observed'?'上次观测到账：':'上次官方确认：')+bjt.format(new Date(state.last.at))+'（北京时间）':'尚无可用于计算的完成记录';
+ $('#festival-kicker').textContent=state.pending?'RESET ANNOUNCED · 已宣布，持续跟进':full?(state.timedOnly?'RESET FESTIVAL · 按官方预告时间触发':'RESET FESTIVAL · 官方确认狂欢'):soft?'RESET FESTIVAL · 社区观测到账':'THE WAITING ROOM · 等待下一次重置';
+ $('#festival-description').textContent=state.pending?(state.announcement.triggerAt?'Tibo 已宣布下一次重置，到公布的截止时间会自动触发日历、狂欢与提醒，不要求再发布 Done。':'Tibo 已宣布下一次重置，尚未收录明确截止时间；预告继续保留。'):full?(state.timedOnly?'已到 Tibo 官方公布的重置时间，日历按预告自动触发。金币、光晕和彩屑已就位，人物从触发时刻恢复清晰。':'Tibo 已官方确认重置。金币、光晕和彩屑已经就位，今天值得最高画质。'):soft?'社区记录已观测到重置到账，金色和彩屑照常庆祝！证据来自社区观测，不冒充 Tibo 的官方完成确认。':'有重置的日子，值得庆祝。没有重置的日子，就看 Tibo 逐渐变成简笔画。';
+ $('#festival-status').textContent=state.preview?'正在预览外观 · 不代表真实重置':state.pending?'宣布于 '+bjt.format(new Date(state.announcement.at))+'（北京时间）':state.last?(state.timedOnly?'按预告触发：':state.last.kind==='observed'?'上次观测到账：':'上次官方确认：')+bjt.format(new Date(state.last.at))+'（北京时间）':'尚无可用于计算的重置记录';
  const announcementPanel=$('#announcement-detail');announcementPanel.replaceChildren();announcementPanel.hidden=!state.pending;
  if(state.pending){
-  if(state.announcement.windowEnd){const p=document.createElement('p');p.textContent='预告截止：'+bjt.format(new Date(state.announcement.windowEnd))+' 北京时间'+(state.overdue?' · 已过窗口，继续核实':' · 尚未确认落地');announcementPanel.append(p);}
+  if(state.announcement.triggerAt){const p=document.createElement('p');const left=Date.parse(state.announcement.triggerAt)-Date.now();p.textContent='按原文触发：'+bjt.format(new Date(state.announcement.triggerAt))+' 北京时间'+(left>0?' · 还有 '+duration(left):' · 已到触发时间，后台正在记录');announcementPanel.append(p);}
   if(state.last){const p=document.createElement('p');p.textContent='上次完成记录：'+bjt.format(new Date(state.last.at))+' 北京时间 · 人物仍按这次完成记录计算';announcementPanel.append(p);}
   const a=document.createElement('a');a.href=state.announcement.url;a.textContent='查看本次重置预告 ↗';a.target='_blank';a.rel='noopener noreferrer';announcementPanel.append(a);
  }
@@ -39,7 +39,7 @@ function renderAppearance(){
  $('#mascot-stage').textContent=(state.preview?'预览 · ':'')+(state.days===null?'等待确认':state.celebration?'DAY 1 · 满血复活':'DAY '+Math.min(state.days+1,5)+(state.days>=4?' +':''));
  $('#mascot-quote').textContent=state.days===null?'我先看看记录。':quotes[state.stage];
  $('#mascot-days').textContent=state.days===null?'暂无已确认或观测到的重置记录':state.celebration?'重置后未满 24 小时':'距上次完成记录已过 '+state.days+' 天';
- $('#mascot-basis').textContent=state.preview?'仅外观预览':data.status.mode==='public'?'基于公共源收录记录':!data.status.connected?'基于已收录记录 · 实时源未连接':'按最近完成记录计算';
+ $('#mascot-basis').textContent=state.preview?'仅外观预览':state.timedOnly?'按官方预告时间触发':data.status.mode==='public'?'基于公共源收录记录':!data.status.connected?'基于已收录记录 · 实时源未连接':'按最近重置记录计算';
  $('#replay').hidden=!state.celebration||state.pending;
  if(state.celebration&&!state.pending&&!previousCelebration)confetti();
  if(!state.celebration||state.pending)$('#confetti').replaceChildren();
@@ -50,7 +50,7 @@ function duration(ms){const m=Math.floor(ms/60000);const d=Math.floor(m/1440),h=
 const dateKey=d=>bjt.format(new Date(d)).slice(0,10);
 const requestedDate=navigation.get('date');
 let selected=/^\d{4}-\d{2}-\d{2}$/.test(requestedDate||'')&&Number.isFinite(Date.parse(requestedDate+'T12:00:00Z'))?requestedDate:dateKey(Date.now()),view=new Date(selected+'T12:00:00Z'),data={events:[],status:{}};
-const labels={confirmed:'官方确认',observed:'观测到账',scheduled:'重置预告',banked:'重置卡',candidate:'待核实',feature:'功能更新'};
+const labels={confirmed:'官方确认',observed:'观测到账',scheduled:'重置预告',timed:'预告到点',banked:'重置卡',candidate:'待核实',feature:'功能更新'};
 function render(){
  const focusedDate=document.activeElement?.dataset.date;
  const visibleEvents=filterEvents(data.events,contentView);
@@ -82,10 +82,11 @@ function render(){
  if(!events.length){const p=document.createElement('p');p.className='placeholder';p.textContent='这一天尚未收录当前筛选下的动态。空白不代表当天没有重置或更新。';$('#detail').append(p);}
  for(const e of events){const item=document.createElement('article');item.className='record';
   const h=document.createElement('h3');h.className=e.kind;h.textContent=e.title;
-  const time=document.createElement('time');time.textContent=bjt.format(new Date(e.at))+' · 北京时间 / '+timeInZone(e.at,'America/Los_Angeles')+' PT';
+  const time=document.createElement('time');time.textContent=(e.kind==='timed'?'按预告触发：':'')+bjt.format(new Date(e.at))+' · 北京时间 / '+timeInZone(e.at,'America/Los_Angeles')+' PT';
   const p=document.createElement('p');p.textContent=e.note;
   const text=document.createElement('p');text.className='excerpt';text.textContent=e.excerpt||'';text.hidden=!e.excerpt;
   item.append(h,time,p,text);
+  if(e.announcementAt){const announced=document.createElement('p');announced.textContent='原帖宣布：'+bjt.format(new Date(e.announcementAt))+' 北京时间';item.append(announced);}
   if(e.via){const via=document.createElement('p');via.className='via-source';via.textContent=e.via.type==='community-feed'?'社区来源报告，未经本项目独立核验。':'公共镜像收录，原文未经本项目独立核验。';const a=document.createElement('a');a.href=e.via.url;a.textContent='查看收录源 ↗';a.target='_blank';a.rel='noopener noreferrer';via.append(a);item.append(via);}
   if(e.windowStart&&e.windowEnd){
    const window=document.createElement('div');window.className='time-window';
@@ -93,8 +94,8 @@ function render(){
    const range=document.createElement('strong');range.textContent=bjt.format(new Date(e.windowStart))+' — '+bjt.format(new Date(e.windowEnd));
    const note=document.createElement('small');note.textContent=e.timeNote;
    const countdown=document.createElement('small');countdown.className='countdown';
-   const left=Date.parse(e.windowEnd)-Date.now();
-   countdown.textContent=left>0?'距窗口结束还有 '+duration(left):'窗口已于上面标注的截止时刻结束';
+   const left=Date.parse(e.triggerAt||e.windowEnd)-Date.now();
+   countdown.textContent=e.triggerAt?'日历按原文触发：'+bjt.format(new Date(e.triggerAt))+' 北京时间'+(left>0?' · 还有 '+duration(left):' · 已到点'):left>0?'距窗口结束还有 '+duration(left):'窗口已于上面标注的截止时刻结束';
    window.append(caption,range,note,countdown);item.append(window);
   }
   if(e.scope){const scope=document.createElement('p');scope.className='scope';scope.textContent='适用范围：'+e.scope;item.append(scope);}
@@ -130,7 +131,7 @@ function render(){
  if(!frequencyForm.hidden&&!frequencyDirty)$('#source-frequency').value=data.status.pollMode||'smart';
  if(data.desktop){
   $('.notification-settings > p').textContent='提醒开关和类别保存在这台电脑。关闭网页或重启电脑后会保留；后台重新运行并联网后继续检查。';
-  $('.footnote').textContent='本机后台使用系统桌面通知，关闭网页后仍可提醒。请保持电脑唤醒、联网和后台进程运行；系统勿扰模式可能隐藏弹窗。重置确认记录的是原帖发布时间，个人额度以账号显示为准。';
+  $('.footnote').textContent='本机后台使用系统桌面通知，关闭网页后仍可提醒。请保持电脑唤醒、联网和后台进程运行；系统勿扰模式可能隐藏弹窗。官方确认记录原帖时间，预告到点记录公布的触发时间；个人额度以账号显示为准。';
   $('#subscribe').textContent='开启本机桌面提醒';$('#unsubscribe').textContent='关闭本机提醒';
   $('#subscribe').hidden=data.desktop.enabled;$('#unsubscribe').hidden=!data.desktop.enabled;
   const platformHelp=data.desktop.platform==='darwin'?'双击根目录 start.command 启动、stop.command 停止；scripts/launchers/start-service.command 可设置登录自启。':data.desktop.platform==='linux'?'运行 sh start.sh 启动、sh stop.sh 停止；sh scripts/launchers/start-service.sh 可设置登录自启。':'双击根目录 start.cmd 启动、stop.cmd 停止；scripts/launchers/start-service.cmd 可设置登录自启。';
