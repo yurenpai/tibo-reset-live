@@ -1,0 +1,63 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+(async()=>{
+ const {Store}=await import('./store.js');
+ const {DesktopNotifications}=await import('./desktop.js');
+ const {createApp,seedHistoricalEvents}=await import('./server.js');
+ const {PublicFeedMonitor}=await import('./public-feed.js');
+ const store=new Store(':memory:');const sent=[];
+ const now=Date.parse('2026-10-23T09:30:00Z');
+ const history=JSON.parse(fs.readFileSync('history.json','utf8'));
+ const planDoc=JSON.parse(fs.readFileSync('plan-data.json','utf8'));
+ seedHistoricalEvents(store,history,planDoc);
+ const desktop=new DesktopNotifications(store,{send:async message=>sent.push(message),now:()=>now});
+ let rows=[{id:'3000000000000000000',url:'https://x.com/thsottiaux/status/3000000000000000000',text:'Day 19/ It is reset day today.',at:new Date(now-2000).toISOString()}];
+ let fail=false;
+ const monitor=new PublicFeedMonitor(store,(e,options)=>{if(options.notify)desktop.event(e);},{},{now:()=>now,fetchImpl:async()=>fail?new Response('limited',{status:429}):new Response(JSON.stringify({fetched_at:new Date(now).toISOString(),profile:{handle:'thsottiaux'},tweets:rows}),{headers:{'content-type':'application/json'}})});
+ await monitor.check();assert.equal(sent.length,0);
+ const server=createApp({store,history,planDoc,monitor,desktop,now:()=>now,origin:'http://localhost:8793'}).listen(8793,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+ try{
+  let page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.clock.install({time:new Date(now)});
+  await page.goto('http://localhost:8793');await page.waitForSelector('.day');
+  assert.equal(await page.locator('#connection').innerText(),'● 公共源定时检查');
+  assert.equal(await page.locator('#subscribe').innerText(),'开启本机桌面提醒');
+  assert(await page.locator('#subscribe').isEnabled());
+  assert(await page.locator('body').evaluate(e=>e.classList.contains('announced')));
+  assert((await page.locator('#festival-title').innerText()).includes('重置已宣布'));
+  assert(await page.locator('#announcement-detail').isVisible());
+  await page.locator('.appearance-preview summary').click();await page.selectOption('#appearance','4');
+  assert((await page.locator('#mascot-stage').innerText()).startsWith('预览'));
+  await page.locator('#mascot-exit-preview').click();
+  assert(await page.locator('#preview-notice').isHidden());
+  assert(await page.locator('body').evaluate(e=>e.classList.contains('announced')));
+  await page.locator('#subscribe').click();await page.waitForFunction(()=>!document.querySelector('#unsubscribe').hidden);
+  assert.equal(desktop.settings().enabled,true);assert.equal(sent.length,0);
+  await page.locator('.source-status summary').click();await page.locator('#test-desktop').click();
+  await page.waitForFunction(()=>document.querySelector('#test-result').textContent.includes('已完成'));assert.equal(sent.length,1);
+  await page.locator('.notification-settings summary').click();await page.locator('input[name=feature]').check();await page.locator('#save-preferences').click();
+  await page.waitForFunction(()=>document.querySelector('#preferences-status').textContent.includes('已保存到本机'));assert.equal(desktop.settings().preferences.feature,true);
+  await page.close(); // 后台进程继续接收新动态，完全没有打开的页面。
+  rows.push({id:'3000000000000000001',url:'https://x.com/thsottiaux/status/3000000000000000001',text:'Done',at:new Date(now-1000).toISOString(),is_reply:true,in_reply_to_tweet_id:'3000000000000000000'});
+  await monitor.check();await desktop.chain;assert.equal(sent.length,2);assert.match(sent.at(-1).title,/确认重置/);
+  await monitor.check();await desktop.chain;assert.equal(sent.length,2);
+  page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await page.clock.install({time:new Date(now)});
+  await page.goto('http://localhost:8793/?view=plan');await page.waitForSelector('.plan-day');
+  assert(await page.locator('body').evaluate(e=>e.classList.contains('celebrating')&&!e.classList.contains('announced')));
+  assert(await page.locator('#announcement-detail').isHidden());
+  assert(await page.locator('#unsubscribe').isVisible());assert(await page.locator('input[name=feature]').isChecked());
+  await page.locator('.plan-day').nth(2).focus();
+  const updated=page.waitForResponse(r=>r.url().endsWith('/api/calendar'));await page.clock.runFor(20100);await updated;await page.waitForTimeout(50);
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.planDay),'3');
+  fail=true;await monitor.check();assert.equal(monitor.status.connected,false);
+  await page.reload();await page.waitForSelector('.plan-day');await page.locator('.source-status summary').click();
+  assert((await page.locator('#source-error').innerText()).includes('429'));
+  await page.setViewportSize({width:390,height:844});
+  for(const view of ['reset','plan','all']){await page.locator(`[data-view=${view}]`).click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+  await page.locator('#unsubscribe').click();await page.waitForFunction(()=>!document.querySelector('#subscribe').hidden);assert.equal(desktop.settings().enabled,false);
+  assert.deepEqual(errors,[]);
+  console.log('通过：预告持续显示/退出预览/完成转狂欢、免登录状态、本机提醒设置、关闭网页后后台提醒与去重、重新打开恢复、故障提示、刷新焦点、手机三视图');
+ }finally{await browser.close();await new Promise(r=>server.close(r));store.close();}
+})().catch(e=>{console.error(e);process.exitCode=1});

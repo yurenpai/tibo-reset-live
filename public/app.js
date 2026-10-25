@@ -4,7 +4,7 @@ import { renderPlan } from './plan-ui.js';
 const navigation=new URLSearchParams(location.search);
 let contentView=['all','plan'].includes(navigation.get('view'))?navigation.get('view'):'reset';
 const $=s=>document.querySelector(s);
-let visualPreview=null,previousCelebration=false;
+let visualPreview=null,previousCelebration=false,desktopLoaded=false,webPushRestored=false;
 const quotes=['赞美重置，满血复活！','今天的我，依然清晰。','还好，我还能再等等。','线条开始有自己的想法。','额度没了，画质也没了。'];
 function confetti(){
  const layer=$('#confetti');layer.replaceChildren();if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -15,24 +15,33 @@ function renderAppearance(){
  const state=resetAppearance(data.events,Date.now(),visualPreview);
  document.body.classList.toggle('celebrating',state.celebration);
  document.body.classList.toggle('observing',state.mood==='soft');
+ document.body.classList.toggle('announced',state.pending);
  document.body.dataset.portraitStage=String(state.stage+1);
  $('#preview-notice').hidden=!state.preview;
+ document.body.classList.toggle('previewing',state.preview);
+ $('#mascot-exit-preview').hidden=!state.preview;
  $('#festival-title').replaceChildren();
  const full=state.mood==='full',soft=state.mood==='soft';
- const lines=full?['赞美 Tibo，','额度复活！']:soft?['观测到账，','也要庆祝！']:['等一个重置，','盼一场狂欢。'];
+ const lines=state.pending?['重置已宣布，','等它落地。']:full?['赞美 Tibo，','额度复活！']:soft?['观测到账，','也要庆祝！']:['等一个重置，','盼一场狂欢。'];
  $('#festival-title').append(lines[0],document.createElement('br'),lines[1]);
- $('#festival-kicker').textContent=full?'RESET FESTIVAL · 官方确认狂欢':soft?'RESET FESTIVAL · 社区观测到账':'THE WAITING ROOM · 等待下一次重置';
- $('#festival-description').textContent=full?'Tibo 已官方确认重置。金币、光晕和彩屑已经就位，今天值得最高画质。':soft?'社区记录已观测到重置到账，金色和彩屑照常庆祝！证据来自社区观测，不冒充 Tibo 的官方完成确认。':'有重置的日子，值得庆祝。没有重置的日子，就看 Tibo 逐渐变成简笔画。';
- $('#festival-status').textContent=state.preview?'正在预览外观 · 不代表真实重置':state.last?(state.last.kind==='observed'?'上次观测到账：':'上次官方确认：')+bjt.format(new Date(state.last.at))+'（北京时间）':'尚无可用于计算的完成记录';
+ $('#festival-kicker').textContent=state.pending?'RESET ANNOUNCED · 已宣布，持续跟进':full?'RESET FESTIVAL · 官方确认狂欢':soft?'RESET FESTIVAL · 社区观测到账':'THE WAITING ROOM · 等待下一次重置';
+ $('#festival-description').textContent=state.pending?(state.overdue?'预告窗口已过，目前尚未收录新的到账证据。预告会继续保留，等待官方确认或社区观测；不会自动当成已经重置。':'Tibo 已宣布下一次重置。这里会保留预告及预计时间，收到到账证据后再进入狂欢。'):full?'Tibo 已官方确认重置。金币、光晕和彩屑已经就位，今天值得最高画质。':soft?'社区记录已观测到重置到账，金色和彩屑照常庆祝！证据来自社区观测，不冒充 Tibo 的官方完成确认。':'有重置的日子，值得庆祝。没有重置的日子，就看 Tibo 逐渐变成简笔画。';
+ $('#festival-status').textContent=state.preview?'正在预览外观 · 不代表真实重置':state.pending?'宣布于 '+bjt.format(new Date(state.announcement.at))+'（北京时间）':state.last?(state.last.kind==='observed'?'上次观测到账：':'上次官方确认：')+bjt.format(new Date(state.last.at))+'（北京时间）':'尚无可用于计算的完成记录';
+ const announcementPanel=$('#announcement-detail');announcementPanel.replaceChildren();announcementPanel.hidden=!state.pending;
+ if(state.pending){
+  if(state.announcement.windowEnd){const p=document.createElement('p');p.textContent='预告截止：'+bjt.format(new Date(state.announcement.windowEnd))+' 北京时间'+(state.overdue?' · 已过窗口，继续核实':' · 尚未确认落地');announcementPanel.append(p);}
+  if(state.last){const p=document.createElement('p');p.textContent='上次完成记录：'+bjt.format(new Date(state.last.at))+' 北京时间 · 人物仍按这次完成记录计算';announcementPanel.append(p);}
+  const a=document.createElement('a');a.href=state.announcement.url;a.textContent='查看本次重置预告 ↗';a.target='_blank';a.rel='noopener noreferrer';announcementPanel.append(a);
+ }
  $('#mascot-portrait').style.left=(-[30,337,644,951,1246][state.stage]/260*100)+'%';
- $('#mascot-stage').textContent=state.days===null?'等待确认':state.celebration?'DAY 1 · 满血复活':'DAY '+Math.min(state.days+1,5)+(state.days>=4?' +':'');
+ $('#mascot-stage').textContent=(state.preview?'预览 · ':'')+(state.days===null?'等待确认':state.celebration?'DAY 1 · 满血复活':'DAY '+Math.min(state.days+1,5)+(state.days>=4?' +':''));
  $('#mascot-quote').textContent=state.days===null?'我先看看记录。':quotes[state.stage];
  $('#mascot-days').textContent=state.days===null?'暂无已确认或观测到的重置记录':state.celebration?'重置后未满 24 小时':'距上次完成记录已过 '+state.days+' 天';
- $('#mascot-basis').textContent=state.preview?'仅外观预览':!data.status.connected?'基于已收录记录 · 实时源未连接':'按最近完成记录计算';
- $('#replay').hidden=!state.celebration;
- if(state.celebration&&!previousCelebration)confetti();
- if(!state.celebration)$('#confetti').replaceChildren();
- previousCelebration=state.celebration;
+ $('#mascot-basis').textContent=state.preview?'仅外观预览':data.status.mode==='public'?'基于公共源收录记录':!data.status.connected?'基于已收录记录 · 实时源未连接':'按最近完成记录计算';
+ $('#replay').hidden=!state.celebration||state.pending;
+ if(state.celebration&&!state.pending&&!previousCelebration)confetti();
+ if(!state.celebration||state.pending)$('#confetti').replaceChildren();
+ previousCelebration=state.celebration&&!state.pending;
 }
 const bjt=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
 function duration(ms){const m=Math.floor(ms/60000);const d=Math.floor(m/1440),h=Math.floor(m%1440/60),mm=m%60;return d?`${d} 天 ${h} 小时`:h?`${h} 小时 ${mm} 分`:`${mm} 分钟`;}
@@ -41,6 +50,7 @@ const requestedDate=navigation.get('date');
 let selected=/^\d{4}-\d{2}-\d{2}$/.test(requestedDate||'')&&Number.isFinite(Date.parse(requestedDate+'T12:00:00Z'))?requestedDate:dateKey(Date.now()),view=new Date(selected+'T12:00:00Z'),data={events:[],status:{}};
 const labels={confirmed:'官方确认',observed:'观测到账',scheduled:'重置预告',banked:'重置卡',candidate:'待核实',feature:'功能更新'};
 function render(){
+ const focusedDate=document.activeElement?.dataset.date;
  const visibleEvents=filterEvents(data.events,contentView);
  $('#plan-panel').hidden=contentView==='reset';
  $('.workspace').hidden=contentView==='plan';
@@ -59,6 +69,7 @@ function render(){
  for(let i=0;i<Math.ceil((offset+count)/7)*7;i++){
   const day=new Date(first);day.setUTCDate(i-offset+1);const key=day.toISOString().slice(0,10);const events=visibleEvents.filter(e=>dateKey(e.at)===key);
   const btn=document.createElement('button');btn.className='day'+(day.getUTCMonth()!==view.getUTCMonth()?' other':'')+(key===selected?' selected':'')+(key===dateKey(Date.now())?' today':'');btn.setAttribute('aria-label',key+'，'+events.length+' 条记录');
+  btn.dataset.date=key;
   const num=document.createElement('span');num.className='number';num.textContent=day.getUTCDate();btn.append(num);
   for(const e of events.slice(0,2)){const span=document.createElement('span');span.className='badge '+e.kind;span.textContent=labels[e.kind]+' '+bjt.format(new Date(e.at)).slice(-5);btn.append(span);}
   if(events.length>2){const more=document.createElement('span');more.textContent='另有 '+(events.length-2)+' 条';more.className='empty';btn.append(more);}
@@ -73,6 +84,7 @@ function render(){
   const p=document.createElement('p');p.textContent=e.note;
   const text=document.createElement('p');text.className='excerpt';text.textContent=e.excerpt||'';text.hidden=!e.excerpt;
   item.append(h,time,p,text);
+  if(e.via){const via=document.createElement('p');via.className='via-source';via.textContent='公共镜像收录，原文未经本项目独立核验。';const a=document.createElement('a');a.href=e.via.url;a.textContent='查看收录源 ↗';a.target='_blank';a.rel='noopener noreferrer';via.append(a);item.append(via);}
   if(e.windowStart&&e.windowEnd){
    const window=document.createElement('div');window.className='time-window';
    const caption=document.createElement('span');caption.textContent='推算观察窗口';
@@ -95,13 +107,32 @@ function render(){
   }
   $('#detail').append(item);}
  const latest=visibleEvents[0];$('#headline').textContent=latest?latest.title:'等待新的重置消息';$('#latest').textContent=latest?bjt.format(new Date(latest.at))+' · '+latest.note:'接入实时数据源后，新的预告、确认和重置卡会自动收录。';
- $('#connection').textContent=data.status.connected?'● 实时源已连接':data.status.configured?'○ 实时源重连中':'○ 尚未接入实时源';
+ const publicMode=data.status.mode==='public';
+ $('#connection').textContent=publicMode?(data.status.connected?'● 公共源定时检查':'○ 公共源暂不可用'):data.status.connected?'● 实时源已连接':data.status.configured?'○ 实时源重连中':'○ 尚未接入实时源';
+ $('#source-summary').textContent=publicMode?'免登录 · 定时检查':data.status.mode==='api'?'官方 API':'未接入';
+ $('#source-description').replaceChildren();
+ if(publicMode){const a=document.createElement('a');a.href=data.status.sourceUrl;a.textContent='公共收录源';a.target='_blank';a.rel='noopener noreferrer';$('#source-description').append(a,` · 每 ${data.status.intervalSeconds} 秒检查 Tibo 的主帖和回复。第三方可能延迟、遗漏或中断；可点击原帖核对，不保证秒级。`);}
+ else $('#source-description').textContent='官方 X API 为可选数据源，需要自行配置应用凭证。';
+ const displayTime=at=>at?bjt.format(new Date(at))+' 北京时间':'尚无';
+ $('#source-times').textContent=publicMode?`本机最近检查：${displayTime(data.status.lastCheck)}；上游最近更新：${displayTime(data.status.upstreamAt)}；最新收录帖：${displayTime(data.status.newestPostAt)}`:'';
+ $('#source-error').textContent=data.status.error||'';
  const obs=data.observations;
  $('#checked').textContent=(data.lastCheck?'最近检查：'+bjt.format(new Date(data.lastCheck)):'历史核对：'+bjt.format(new Date(data.historyCheckedAt))+' · 实时源未接入')+
   (obs?.enabled?(obs.checkedAt?' · 观测源 '+bjt.format(new Date(obs.checkedAt)):' · 观测源等待首次检查'):' · 未配置社区观测源');
- $('#subscribe').disabled=!data.pushReady;
- if(!data.pushReady)$('#message').textContent='维护者尚未配置推送服务，目前不能订阅关闭页面后的通知。';
+ $('#subscribe').disabled=!data.desktop&&!data.pushReady;
+ $('#desktop-info').hidden=!data.desktop;$('#test-desktop').hidden=!data.desktop;
+ $('#background-help').hidden=!data.desktop;
+ if(data.desktop){
+  $('.notification-settings > p').textContent='提醒开关和类别保存在这台电脑。关闭网页或重启电脑后会保留；后台重新运行并联网后继续检查。';
+  $('.footnote').textContent='本机后台使用系统桌面通知，关闭网页后仍可提醒。请保持电脑唤醒、联网和后台进程运行；系统勿扰模式可能隐藏弹窗。重置确认记录的是原帖发布时间，个人额度以账号显示为准。';
+  $('#subscribe').textContent='开启本机桌面提醒';$('#unsubscribe').textContent='关闭本机提醒';
+  $('#subscribe').hidden=data.desktop.enabled;$('#unsubscribe').hidden=!data.desktop.enabled;
+  $('#desktop-info').textContent=(data.desktop.service?.supervised?'后台守护正在运行，进程异常退出会自动重启。':'本地后台正在运行。')+'关掉网页仍可提醒。记录和偏好保存在本机，重启后不会清空；关机或休眠期间暂停监测。'+(data.desktop.error?' 最近通知错误：'+data.desktop.error:'');
+  if(!desktopLoaded){showPreferences(data.desktop.preferences);desktopLoaded=true;$('#preferences-status').textContent='偏好保存在这台电脑，关闭网页后继续生效。';}
+ }else if(!data.pushReady)$('#message').textContent='当前未配置云端推送。本机使用请双击 start.cmd，可启用桌面提醒。';
+ if(!data.desktop&&!webPushRestored){webPushRestored=true;restoreWebPush();}
  renderAppearance();
+ if(focusedDate)document.querySelector(`[data-date="${focusedDate}"]`)?.focus({preventScroll:true});
 }
 async function refresh(){try{const r=await fetch('/api/calendar',{cache:'no-store'});if(!r.ok)throw Error();data=await r.json();render();}catch{$('#connection').textContent='○ 连接中断';$('#message').textContent='无法读取更新，当前显示保留的记录。';}}
 // 日历只覆盖“有记录的最早月份”到“当前月份”。更早的月份不存在可展示的内容，翻过去只会是空洞。
@@ -125,6 +156,7 @@ async function savePreferences(endpoint,preferences){
 }
 $('#preferences-form').onsubmit=async event=>{
  event.preventDefault();
+ if(data.desktop){try{await localSettings({preferences:notificationPreferences()});$('#preferences-status').textContent='已保存到本机，关闭网页后继续生效。';}catch(e){$('#preferences-status').textContent=e.message;}return;}
  try{const reg=await registration();const sub=await reg.pushManager.getSubscription();
  if(!sub){$('#preferences-status').textContent='尚未订阅，所选偏好将在点击“订阅重置提醒”时一起保存。';return;}
  const saved=await savePreferences(sub.endpoint,notificationPreferences());showPreferences(saved.preferences);
@@ -132,16 +164,24 @@ $('#preferences-form').onsubmit=async event=>{
  }catch(e){$('#preferences-status').textContent=e.message;}
 };
 for(const button of document.querySelectorAll('[data-view]'))button.onclick=()=>{
- contentView=button.dataset.view;for(const other of document.querySelectorAll('[data-view]'))other.setAttribute('aria-pressed',String(other===button));render();
+ contentView=button.dataset.view;
+ const url=new URL(location.href);
+ if(contentView==='reset')url.searchParams.delete('view');else url.searchParams.set('view',contentView);
+ history.replaceState(null,'',url);
+ for(const other of document.querySelectorAll('[data-view]'))other.setAttribute('aria-pressed',String(other===button));render();
 };
 $('#subscribe').onclick=async()=>{
+ if(data.desktop){try{await localSettings({enabled:true,preferences:notificationPreferences()});$('#message').textContent='本机提醒已开启。首次读取只建立基线，后续新动态按所选类别提醒。';}catch(e){$('#message').textContent=e.message;}return;}
  try{const reg=await registration();await navigator.serviceWorker.ready;const permission=await Notification.requestPermission();if(permission!=='granted')throw Error('尚未允许通知，可在浏览器的网站设置中开启。');const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(data.publicKey)});const r=await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...sub.toJSON(),preferences:notificationPreferences()})});if(!r.ok)throw Error((await r.json()).error);$('#subscribe').hidden=true;$('#unsubscribe').hidden=false;$('#message').textContent='已订阅。服务器只会推送你开启的通知类别，和当前页面筛选无关。';$('#preferences-status').textContent='通知偏好已随订阅保存到服务器。';}catch(e){$('#message').textContent=e.message;}
 };
-$('#unsubscribe').onclick=async()=>{try{const reg=await registration();const sub=await reg.pushManager.getSubscription();if(sub){const r=await fetch('/api/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})});if(!r.ok)throw Error('取消未成功，请重试');await sub.unsubscribe();}$('#subscribe').hidden=false;$('#unsubscribe').hidden=true;$('#message').textContent='已取消提醒。';}catch(e){$('#message').textContent=e.message;}};
+$('#unsubscribe').onclick=async()=>{try{if(data.desktop){await localSettings({enabled:false});$('#message').textContent='本机提醒已关闭，日历继续收录。';return;}const reg=await registration();const sub=await reg.pushManager.getSubscription();if(sub){const r=await fetch('/api/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})});if(!r.ok)throw Error('取消未成功，请重试');await sub.unsubscribe();}$('#subscribe').hidden=false;$('#unsubscribe').hidden=true;$('#message').textContent='已取消提醒。';}catch(e){$('#message').textContent=e.message;}};
+async function localSettings(settings){const r=await fetch('/api/local/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(settings)});const result=await r.json();if(!r.ok)throw Error(result.error||'保存失败');data.desktop=result.desktop;render();}
+$('#test-desktop').onclick=async()=>{const button=$('#test-desktop');button.disabled=true;try{const r=await fetch('/api/local/test-notification',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const result=await r.json();$('#test-result').textContent=result.message||result.error;}catch{$('#test-result').textContent='无法联系本地后台';}finally{button.disabled=false;}};
 refresh();setInterval(refresh,20000);
 setInterval(renderAppearance,60000);
 $('#appearance').onchange=event=>{visualPreview=event.target.value==='auto'?null:Number(event.target.value);renderAppearance();};
 $('#exit-preview').onclick=()=>{visualPreview=null;$('#appearance').value='auto';renderAppearance();};
+$('#mascot-exit-preview').onclick=$('#exit-preview').onclick;
 $('#replay').onclick=confetti;
 $('#mascot-toggle').onclick=()=>{const collapsed=$('#tibo-mascot').classList.toggle('collapsed');$('#mascot-toggle').textContent=collapsed?'+':'−';$('#mascot-toggle').setAttribute('aria-expanded',String(!collapsed));$('#mascot-toggle').setAttribute('aria-label',collapsed?'展开 Tibo 人物':'收起 Tibo 人物');};
 // 窄屏下展开的人物会遮挡日历与正文，首次进入先收起，用户点开时再把遮挡风险交给他们自己决定。
@@ -150,4 +190,4 @@ function applyNarrow(){if(narrow.matches&&!narrowTouched){$('#tibo-mascot').clas
 let narrowTouched=false;
 $('#mascot-toggle').addEventListener('click',()=>{narrowTouched=true;});
 narrow.addEventListener('change',applyNarrow);applyNarrow();
-if('serviceWorker'in navigator)registration().then(async r=>{const sub=await r.pushManager.getSubscription();if(sub){$('#subscribe').hidden=true;$('#unsubscribe').hidden=false;try{const saved=await savePreferences(sub.endpoint);showPreferences(saved.preferences);$('#preferences-status').textContent='已读取服务器保存的通知偏好。';}catch(e){$('#preferences-status').textContent=e.message;}}}).catch(()=>{});
+function restoreWebPush(){if('serviceWorker'in navigator)registration().then(async r=>{const sub=await r.pushManager.getSubscription();if(sub){try{const saved=await savePreferences(sub.endpoint);$('#subscribe').hidden=true;$('#unsubscribe').hidden=false;showPreferences(saved.preferences);$('#preferences-status').textContent='已读取服务器保存的通知偏好。';}catch(e){$('#subscribe').hidden=false;$('#unsubscribe').hidden=true;$('#preferences-status').textContent=e.message+'，请重新订阅以恢复绑定。';}}}).catch(()=>{});}

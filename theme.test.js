@@ -34,3 +34,13 @@ test('观测比确认更新时，按更近的完成记录计算人物阶段',()=
  const s=resetAppearance(events,now3);
  assert.equal(s.last.kind,'observed');assert.equal(s.stage,1);assert.equal(s.celebration,false);
 });
+
+test('最新预告持续展示，经过窗口和重启重算都不退回等待室，也不算完成',()=>{
+ const events=[{id:'done',kind:'observed',at:new Date(now-2*DAY_MS).toISOString()},{id:'next',kind:'scheduled',at:new Date(now-DAY_MS).toISOString(),windowEnd:new Date(now-3600000).toISOString()}];
+ const state=resetAppearance(events,now);
+ assert.equal(state.pending,true);assert.equal(state.overdue,true);assert.equal(state.celebration,false);assert.equal(state.days,2);
+ assert.equal(resetAppearance(JSON.parse(JSON.stringify(events)),now+DAY_MS).pending,true);
+ assert.equal(resetAppearance(events,now,4).pending,false);
+ events.push({id:'landed',kind:'confirmed',at:new Date(now-1000).toISOString()});
+ const landed=resetAppearance(events,now);assert.equal(landed.pending,false);assert.equal(landed.celebration,true);assert.equal(landed.stage,0);
+});

@@ -27,7 +27,7 @@ export class Monitor {
   }
   async api(route,options={}) {
     const r=await fetch('https://api.x.com/2/'+route,{...options,headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000)});
-    if(!r.ok) throw new Error('X API HTTP '+r.status);
+    if(!r.ok) { const error=new Error('X API HTTP '+r.status);error.status=r.status;throw error; }
     return r.json();
   }
   enqueue(p,notify=true) {
@@ -52,8 +52,13 @@ export class Monitor {
     if(p.author_id!==this.userId||!p.created_at||this.store.post(p.id))return;
     const reply=p.referenced_tweets?.find(r=>r.type==='replied_to')?.id;
     if(reply&&!this.store.post(reply)&&!this.resolveParentEvent(reply)&&depth<32){
-      const r=await this.api('tweets/'+reply+'?tweet.fields=created_at,author_id,referenced_tweets');
-      if(r.data && r.data.id !== p.id)await this.process(r.data,false,depth+1);
+      try {
+        const r=await this.api('tweets/'+reply+'?tweet.fields=created_at,author_id,referenced_tweets');
+        if(r.data && r.data.id !== p.id)await this.process(r.data,false,depth+1);
+      } catch(error) {
+        // 删除/受限父帖不应阻塞当前帖；暂时性错误交给补漏重试。
+        if(![403,404].includes(error.status))throw error;
+      }
     }
     const parentEvent=reply?this.resolveParentEvent(reply):null;
     const results=classifyEvents(p,parentEvent);
@@ -66,8 +71,8 @@ export class Monitor {
         this.store.upsertEvent(mergeFollowUp(parentEvent,{id:p.id,at:p.created_at,url,excerpt:p.text.slice(0,500),...schedule}));
         continue;
       }
-      const e={id,at:p.created_at,...result,...(result.topic==='reset'?schedule:{}),parent:result.topic==='reset'?(parentEvent?.id||reply||null):(reply||null),replyTo:reply||null,sourceType:reply?'reply':'post',url,excerpt:p.text.slice(0,500)};
-      if(this.store.addEvent(e,notify&&result.kind!=='candidate'))this.onEvent(e);
+      const e={id,at:p.created_at,...result,...(result.topic==='reset'?schedule:{}),parent:result.topic==='reset'?(parentEvent?.id||reply||null):(reply||null),replyTo:reply||null,sourceType:reply?'reply':'post',url,excerpt:p.text.slice(0,500),...(p.via?{via:p.via}:{})};
+      if(this.store.addEvent(e,notify&&result.kind!=='candidate'))this.onEvent(e,{notify:notify&&result.kind!=='candidate'});
     }
     this.store.savePost(p);
   }
@@ -81,8 +86,10 @@ export class Monitor {
       posts.push(...r.data||[]);next=baseline?null:r.meta?.next_token;
     }while(next);
     posts.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:1);
-    for(const p of posts)await this.enqueue(p,!baseline);
-    if(posts.length)this.store.set('cursor',posts.at(-1).id);
+    let failed=false;
+    for(const p of posts){try{await this.enqueue(p,!baseline);}catch(error){failed=true;this.status.error=error.message;}}
+    // 后续帖子仍处理；失败未保存的帖下轮重试，游标暂不前移。
+    if(posts.length&&!failed)this.store.set('cursor',posts.at(-1).id);
     this.store.set('lastCheck',new Date().toISOString());
   }
   async start() {

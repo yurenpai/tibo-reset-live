@@ -50,7 +50,8 @@ export function buildPlan(doc,now=Date.now(),events=[]){
   const official=resets.some(e=>e.kind==='confirmed'),observed=resets.some(e=>e.kind==='observed');
   const resetStatus=official?'confirmed':observed?'observed':resets.some(e=>e.kind==='scheduled')?'planned':hasReset?'reported':null;
   const plannedType=hasFeature&&hasReset?'feature_reset':hasFeature?'feature':hasReset?'reset':'upcoming';
-  const recent=features.at(-1)||resets.at(-1);
+  const newest=list=>[...list].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0];
+  const recent=newest(features)||newest(resets);
   const sourceAt=entry?.sourceAt||recent?.at||null;
   const status=plannedType==='upcoming'?'pending':hasFeature?'reported':resetStatus||entry?.status||'reported';
   return {...d,isToday:d.date===todayPT,plannedType,status,resetStatus,

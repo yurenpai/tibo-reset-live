@@ -11,8 +11,9 @@ function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefine
 function source(url,label){const a=el('a',label);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;}
 export function renderPlan(payload){
  if(!payload)return;
+ const focusedDay=document.activeElement?.dataset.planDay;
  const {plan,days,counts,todayPT}=payload;
- if(selectedDay===null)selectedDay=days.find(d=>d.isToday)?.day||days.find(d=>d.sourceUrl)?.day||1;
+ if(selectedDay===null)selectedDay=days.find(d=>d.isToday)?.day||days.filter(d=>d.sourceUrl).at(-1)?.day||1;
  $('#plan-done').textContent=`${counts.done} / ${plan.days} 天`;
  $('#plan-remaining').textContent=`${counts.remaining} 天`;
  $('#plan-resets').textContent=counts.resets;
@@ -25,12 +26,14 @@ export function renderPlan(payload){
  for(const d of days){
   const btn=el('button',undefined,'plan-day '+d.plannedType+(d.isToday?' plan-today':'')+(d.day===selectedDay?' plan-selected':''));
   btn.type='button';btn.setAttribute('aria-pressed',String(d.day===selectedDay));
+  btn.dataset.planDay=String(d.day);
   btn.setAttribute('aria-label',`Day ${d.day}，${d.date} PT，${types[d.plannedType]}，${statuses[d.status]}`);
   btn.title=`${d.date} PT · ${d.summary}`;
   if(d.isToday)btn.setAttribute('aria-current','date');
-  btn.append(el('span',`DAY ${d.day}`,'plan-day-number'),el('time',d.date.slice(5)+' · PT','plan-date'),el('span',types[d.plannedType],'plan-type'),el('strong',d.title),el('span',statuses[d.status],'plan-state'));
+  btn.append(el('span',`DAY ${d.day}`,'plan-day-number'),el('time',d.date.slice(5)+' · PT','plan-date'),el('span',types[d.plannedType],'plan-type'),el('strong',d.plannedType==='upcoming'?(d.isToday?'今日内容待收录':d.date>todayPT?'等待当天更新':'暂未收录'):d.title));
+  if(d.plannedType!=='upcoming')btn.append(el('span',statuses[d.status],'plan-state'));
   if(d.resetStatus)btn.append(el('small',resetStates[d.resetStatus]));
-  btn.onclick=()=>{selectedDay=d.day;renderPlan(payload);};$('#plan-grid').append(btn);
+  btn.onclick=()=>{selectedDay=d.day;renderPlan(payload);if(matchMedia('(max-width:1200px)').matches)$('#plan-detail').scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});};$('#plan-grid').append(btn);
   const tr=el('tr');tr.append(el('td',`Day ${d.day} / ${d.date}`),el('td',types[d.plannedType]),el('td',statuses[d.status]),el('td',d.resetStatus?resetStates[d.resetStatus]:'不适用'));
   const td=el('td');if(d.sourceUrl)td.append(source(d.sourceUrl,'原帖 ↗'));else td.textContent='待观察';tr.append(td);$('#plan-table').append(tr);
  }
@@ -42,8 +45,10 @@ export function renderPlan(payload){
  detail.append(el('p',`PT 计划日：${d.date}（America/Los_Angeles）。北京时间区间：${bjt(d.startAt)} 至 ${bjt(d.endAt)}（次日零点不含）。`,'plan-time-note'));
  if(d.sourceAt)detail.append(el('p',`原帖发布：${pt(d.sourceAt)} PT / ${bjt(d.sourceAt)} 北京时间`,'plan-time-note'));
  if(d.sourceUrl)detail.append(source(d.sourceUrl,'查看当天 Tibo 原帖 ↗'));
- for(const event of d.events||[]){const row=el('p');row.append(el('span',(event.topic==='feature'?'功能更新':event.kind==='observed'?'社区观测':event.kind==='confirmed'?'官方确认':'预告 / 重置卡')+' · '+bjt(event.at)+' 北京时间 · '));if(event.url)row.append(source(event.url,event.title+' ↗'));detail.append(row);}
+ const shown=new Set(d.sourceUrl?[d.sourceUrl]:[]);
+ for(const event of d.events||[]){if(!event.url||shown.has(event.url))continue;shown.add(event.url);const row=el('p');row.append(el('span',(event.topic==='feature'?'功能更新':event.kind==='observed'?'社区观测':event.kind==='confirmed'?'官方确认':'预告 / 重置卡')+' · '+bjt(event.at)+' 北京时间 · '));row.append(source(event.url,event.title+' ↗'));detail.append(row);}
  $('#plan-excerpt').textContent=plan.announcementExcerpt;
  $('#plan-source').href=plan.announcementUrl;
  $('#plan-announcement-time').textContent=`声明发布：${pt(plan.announcementAt)} PT / ${bjt(plan.announcementAt)} 北京时间`;
+ if(focusedDay)document.querySelector(`[data-plan-day="${focusedDay}"]`)?.focus({preventScroll:true});
 }

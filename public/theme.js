@@ -8,6 +8,10 @@ export function resetAppearance(events, now = Date.now(), preview = null) {
     .sort((a,b) => Date.parse(b.at)-Date.parse(a.at))[0] || null;
   const elapsed = last ? Math.max(0, Math.floor((now-Date.parse(last.at))/DAY_MS)) : null;
   const override = Number.isInteger(preview) && preview >= 0 && preview <= 4;
+  const announcement = events.filter(e=>(!e.topic||e.topic==='reset')&&e.kind==='scheduled'&&Number.isFinite(Date.parse(e.at))&&Date.parse(e.at)<=now)
+    .sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0]||null;
+  // 预告保留到后续完成证据；到点只更新说明，不自动确认，也不退回无预告状态。
+  const pending = !override && !!announcement && (!last||Date.parse(announcement.at)>Date.parse(last.at));
   const days = override ? preview : elapsed;
   // 观测到账可以触发较轻庆祝，但永远不与官方确认显示成完全一样。
   const observedOnly = !override && last?.kind === 'observed';
@@ -20,6 +24,7 @@ export function resetAppearance(events, now = Date.now(), preview = null) {
     celebration,
     // full：官方确认的金色狂欢；soft：社区观测的轻庆祝；none：普通等待。
     mood: celebration ? (observedOnly ? 'soft' : 'full') : 'none',
-    preview: override
+    preview: override,announcement,pending,
+    overdue:pending&&Number.isFinite(Date.parse(announcement.windowEnd))&&now>=Date.parse(announcement.windowEnd)
   };
 }

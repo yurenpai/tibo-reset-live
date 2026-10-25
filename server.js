@@ -11,6 +11,8 @@ import { normalizePreferences, wantsNotification, TOPICS } from './preferences.j
 import { buildPlan, dayOf } from './plan.js';
 import { partsAt, PACIFIC_ZONE } from './schedule.js';
 import { dateInZone } from './public/content.js';
+import { PublicFeedMonitor } from './public-feed.js';
+import { DesktopNotifications } from './desktop.js';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 const ptDate = now => {
@@ -90,7 +92,7 @@ export class DailyDigest {
     const observed=events.filter(e=>e.kind==='observed').length;
     const features=events.filter(e=>e.topic==='feature').length;
     const e={id,at:new Date(now).toISOString(),kind:'digest',topic:'plan',evidence:'summary',status:'reported',digestDate:today.date,planDay:today.day,title:`Day ${today.day} · 每日计划摘要`,note:`太平洋时间 ${today.date}：${today.title}。官方重置确认 ${confirmed} 条，社区观测 ${observed} 条，功能更新 ${features} 条。未记录不代表没有更新；计划和预告不等于重置完成。`,sourceType:'summary',historical:!notify};
-    if(this.store.addEvent(e,notify)){this.onEvent(e);return true;}
+    if(this.store.addEvent(e,notify)){this.onEvent(e,{notify});return true;}
     return false;
   }
   start() {
@@ -101,7 +103,7 @@ export class DailyDigest {
   stop(){clearInterval(this.timer);}
 }
 
-export function createApp({store,history,planDoc,monitor,observationSources=[],pushReady=false,publicKey=null,origin='http://localhost:8788',now=()=>Date.now()}) {
+export function createApp({store,history,planDoc,monitor,observationSources=[],pushReady=false,publicKey=null,origin='http://localhost:8788',now=()=>Date.now(),desktop=null}) {
   const app=express();app.disable('x-powered-by');
   app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'");next();});
   app.use(express.json({limit:'8kb'}));
@@ -114,7 +116,17 @@ export function createApp({store,history,planDoc,monitor,observationSources=[],p
       if(limits.size>10000)for(const [ip,entry] of limits)if(at-entry.at>60000)limits.delete(ip);
     }next();
   });
-  app.get('/api/calendar',(req,res)=>{const events=store.events();res.set('Cache-Control','no-store').json({events,plan:buildPlan(planDoc,now(),events),status:monitor.status,observations:{enabled:observationSources.length>0,checkedAt:store.get('observationCheck')||null,error:store.get('observationError')||null},historyCheckedAt:history.checkedAt,lastCheck:store.get('lastCheck')||null,pushReady,publicKey:pushReady?publicKey:null});});
+  app.get('/api/health',(req,res)=>res.set('Cache-Control','no-store').json({app:'tibo-reset-live',ok:true,local:!!desktop}));
+  app.get('/api/calendar',(req,res)=>{const events=store.events();res.set('Cache-Control','no-store').json({events,plan:buildPlan(planDoc,now(),events),status:monitor.status,observations:{enabled:observationSources.length>0,checkedAt:store.get('observationCheck')||null,error:store.get('observationError')||null},historyCheckedAt:history.checkedAt,lastCheck:store.get('lastCheck')||null,pushReady,publicKey:pushReady?publicKey:null,desktop:desktop?.status()||null});});
+  app.post('/api/local/preferences',(req,res)=>{
+    if(!desktop)return res.sendStatus(404);
+    if(!req.body||typeof req.body!=='object'||Array.isArray(req.body)||('preferences'in req.body&&(!req.body.preferences||typeof req.body.preferences!=='object'||Array.isArray(req.body.preferences))))return res.status(400).json({error:'无效的本机通知设置'});
+    desktop.save(req.body);res.json({ok:true,desktop:desktop.status()});
+  });
+  app.post('/api/local/test-notification',async(req,res)=>{
+    if(!desktop)return res.sendStatus(404);
+    try{await desktop.test();res.json({ok:true,message:'通知调用已完成，请检查桌面通知中心。系统勿扰模式可能会隐藏弹窗。'});}catch(error){res.status(503).json({error:error.message});}
+  });
   app.post('/api/subscribe',(req,res)=>{
     if(!pushReady)return res.status(503).json({error:'维护者尚未配置浏览器推送'});
     if(!validSubscription(req.body))return res.status(400).json({error:'无效的浏览器推送订阅'});
@@ -152,19 +164,25 @@ export function startServer(env=process.env) {
     if(!pushReady||delivering)return;delivering=true;
     try{await deliverPending(store,(...args)=>webpush.sendNotification(...args));}finally{delivering=false;}
   }
-  const onEvent=()=>{deliver().catch(()=>{});};
-  const monitor=new Monitor(store,onEvent,env);
+  const desktop=env.LOCAL_MODE==='1'?new DesktopNotifications(store):null;
+  if(desktop)desktop.service={supervised:env.LOCAL_SUPERVISED==='1'};
+  const onEvent=(event,{notify=true}={})=>{deliver().catch(()=>{});if(notify)desktop?.event(event);};
+  const mode=env.SOURCE_MODE||'auto';
+  const monitor=mode==='public'||(mode==='auto'&&!env.X_BEARER_TOKEN)?new PublicFeedMonitor(store,onEvent,env):new Monitor(store,onEvent,env);
+  if(!(monitor instanceof PublicFeedMonitor))monitor.status.mode='api';
   const observationSources=(env.OBSERVATION_SOURCES||'').split(',').map(s=>s.trim()).filter(s=>/^https:\/\//.test(s));
   const observations=new Observations(store,onEvent,observationSources);
   const digest=new DailyDigest(store,planDoc,onEvent);
-  const app=createApp({store,history,planDoc,monitor,observationSources,pushReady,publicKey:env.VAPID_PUBLIC_KEY,origin});
-  const server=app.listen(Number(env.PORT)||8788,'0.0.0.0',()=>console.log('Local: http://localhost:'+(env.PORT||8788)));
+  const app=createApp({store,history,planDoc,monitor,observationSources,pushReady,publicKey:env.VAPID_PUBLIC_KEY,origin,desktop});
+  // 本机桌面通知的控制接口只存在于绑定回环地址的本地模式。
+  const host=desktop?'127.0.0.1':env.HOST||'0.0.0.0';
+  const server=app.listen(Number(env.PORT)||8788,host,()=>console.log('Local: http://localhost:'+(env.PORT||8788)));
   const retry=setInterval(()=>deliver().catch(()=>{}),30000);
   monitor.start().catch(e=>{console.error(e.message);});
   observations.start();digest.start();
   function shutdown(){monitor.stop();observations.stop();digest.stop();clearInterval(retry);server.close(()=>{store.close();process.exit(0);});setTimeout(()=>process.exit(0),2000).unref();}
   process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
-  return {app,server,store,monitor,observations,digest};
+  return {app,server,store,monitor,observations,digest,desktop};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer();

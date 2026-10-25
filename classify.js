@@ -16,16 +16,20 @@ export function normalizeEvent(event) {
 }
 
 function classifyReset(post, parent = null) {
-  const text = post.text || '';
+  const text = (post.text || '').replace(/[’‘]/g,"'").replace(/https?:\/\/\S+/g,'').trim();
+  // 完成词前可能是否定或未来时态；先排除，不能只看到 completed 就庆祝。
+  if (/\b(?:not|never|haven't|hasn't|didn't|won't)\b[^.!?\n]{0,60}\b(?:reset|processed|propagated|completed|done)\b|\breset\b[^.!?\n]{0,35}\bnot\b/i.test(text)) return null;
   if (/\b(no reset|not resetting|won.t.{0,15}reset|reset button|reset my password)\b/i.test(text) && !/Day\s*\d+\s*\/\s*Reset/i.test(text)) return null;
   const related = /\breset(?:s|ting)?\b/i.test(text);
   const contextual = parent && ['scheduled','confirmed','banked'].includes(parent.kind);
   if (!related && !contextual) return null;
   if (parent?.kind==='banked' && /confirmed.{0,20}landed|^done[.!\s]*$/i.test(text.trim())) return {kind:'banked',status:'confirmed',title:'重置卡到账确认',note:'确认的是重置卡发放，未据此认定自动重置。'};
   if (/\bbanked\s+reset\b/i.test(text)) return {kind:'banked', title:'发放重置卡', note:'备用重置卡，具体到账及有效期以账号为准。'};
-  if (/reset.{0,35}(?:processed|propagated|completed)|(?:reset all|all reset)|(?:we have|we.ve|just) reset/i.test(text) || contextual && /^(?:done(?: and dusted)?|it.s done|all propagated)[.!\s]*$/i.test(text.trim())) return {kind:'confirmed',title:'Tibo 已确认重置',note:'记录的是确认帖发布时间，不代表每个账号的实际到账时刻。'};
+  if (/\b(?:will|tomorrow|landing|lands|scheduled)\b[^.!?\n]{0,60}\b(?:reset|processed|propagated|completed)\b|\breset\b[^.!?\n]{0,60}\b(?:will|tomorrow|landing|lands|scheduled)\b/i.test(text)) return {kind:'scheduled',title:'重置已预告',note:'预计时间请核对原帖；时间到点不会自动改成“已完成”。'};
+  if (/\breset\s+(?:(?:has|have)\s+been\s+|(?:is|was|has)\s+)?(?:fully\s+)?(?:processed|propagated|completed|landed)\b|\b(?:we have|we've|we just|just) reset\b|\ball (?:accounts? (?:have been )?)?reset\b|\breset\b[^.!?\n]{0,80}[.!]?\s*it's done\b/i.test(text) || contextual && /^(?:done(?: and dusted)?|it.s done|all propagated)[.!\s]*$/i.test(text.trim())) return {kind:'confirmed',title:'Tibo 已确认重置',note:'记录的是确认帖发布时间，不代表每个账号的实际到账时刻。'};
   if (/\b(tomorrow|by EOD|within|landing|lands|before|will.{0,25}reset|reset day today)\b/i.test(text)) return {kind:'scheduled',title:'重置已预告',note:'预计时间请核对原帖；时间到点不会自动改成“已完成”。'};
   if (/and reset[.!\s]*(?:Enjoy[.!\s]*)?$/i.test(text)) return {kind:'confirmed',title:'Tibo 已宣布重置',note:'按原帖的重置公告收录；个人到账情况以账号为准。'};
+  if (/\bDay\s*\d{1,2}\s*[\/.·:\-][\s\S]*\breset\b|\b(?:that's|it's)\s+a\s+(?:full\s+)?reset\b/i.test(text)) return {kind:'scheduled',title:'重置已预告',note:'原帖宣布重置，仍待明确的完成证据；不会把宣布时刻当成到账时刻。'};
   return {kind:'candidate',title:'重置信息待核实',note:'发现相关原帖，尚不能据此确认重置完成。'};
 }
 

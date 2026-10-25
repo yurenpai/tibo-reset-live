@@ -25,11 +25,12 @@ const base=process.env.QA_BASE_URL||'http://localhost:8788';
  await page.locator('#today').click();
  assert.equal(await page.locator('#month').innerText(),'2026 年 10 月');
  assert(await page.locator('body').evaluate(e=>e.classList.contains('observing')&&e.classList.contains('celebrating')));
- assert(await page.locator('#replay').isVisible());
- await page.locator('#replay').click();assert.equal(await page.locator('#confetti i').count(),54);
- // 北京时间当日 23:59 仍保持金色及彩屑入口，不因采用观测证据而撤掉。
+ assert(await page.locator('body').evaluate(e=>e.classList.contains('announced')));
+ assert((await page.locator('#festival-title').innerText()).includes('重置已宣布'));
+ assert(await page.locator('#replay').isHidden());
+ // 有更新的未落地预告时保留预热状态；不把预告和彩屑庆祝混淆。
  await page.clock.setFixedTime(new Date('2026-10-23T15:59:00Z'));
- await page.locator('#today').click();assert(await page.locator('#replay').isVisible());
+ await page.locator('#today').click();assert(await page.locator('#announcement-detail').isVisible());
  assert(await page.locator('body').evaluate(e=>e.classList.contains('celebrating')));
  await page.clock.setFixedTime(new Date('2026-10-23T09:30:00Z'));await page.locator('#today').click();
  await page.screenshot({path:'preview.png',fullPage:true});

@@ -30,7 +30,12 @@ export class Store {
   subscriptions() {
     return this.db.prepare('SELECT json FROM subscriptions').all().map(r=>JSON.parse(r.json));
   }
-  upsertHistoricalEvent(e) { this.db.prepare('INSERT OR REPLACE INTO events VALUES(?,?)').run(e.id,JSON.stringify(e)); }
+  upsertHistoricalEvent(e) {
+    const existing=this.event(e.id);
+    // 回填补充静态字段，但保留实时期间收集的窗口和回复。
+    const merged=existing?{...e,...existing}:e;
+    this.db.prepare('INSERT OR REPLACE INTO events VALUES(?,?)').run(e.id,JSON.stringify(merged));
+  }
   upsertEvent(e) {
     const before=this.event(e.id);
     if(before&&JSON.stringify(before)===JSON.stringify(e))return false;
