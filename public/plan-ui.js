@@ -42,11 +42,16 @@ export function renderPlan(payload){
  detail.append(el('span',`DAY ${d.day} · ${d.date} PT`,'label'),el('h3',d.title),el('p',d.summary));
  detail.append(el('p',`类型：${types[d.plannedType]} · 内容状态：${statuses[d.status]}`));
  if(d.resetStatus)detail.append(el('p','独立重置证据：'+resetStates[d.resetStatus],'plan-reset-evidence'));
- detail.append(el('p',`PT 计划日：${d.date}（America/Los_Angeles）。北京时间区间：${bjt(d.startAt)} 至 ${bjt(d.endAt)}（次日零点不含）。`,'plan-time-note'));
+ detail.append(el('p',`计划归属：Day ${d.day} · ${d.date} PT（America/Los_Angeles）；对齐 Tibo 的 Day 编号。北京时间区间：${bjt(d.startAt)} 至 ${bjt(d.endAt)}（次日零点不含）。`,'plan-time-note'));
+ detail.append(el('p','跨日重置完成或到点记录关联原预告所属计划日，触发日期可能不同；功能更新按自身发布时间归日。','plan-time-note'));
  if(d.sourceAt)detail.append(el('p',`原帖发布：${pt(d.sourceAt)} PT / ${bjt(d.sourceAt)} 北京时间`,'plan-time-note'));
  if(d.sourceUrl)detail.append(source(d.sourceUrl,'查看当天 Tibo 原帖 ↗'));
  const shown=new Set(d.sourceUrl?[d.sourceUrl]:[]);
- for(const event of d.events||[])if(event.kind==='timed')detail.append(el('p','按官方预告触发：'+bjt(event.at)+' 北京时间','plan-time-note'));
+ for(const event of d.events||[]){
+  if(event.triggerAt)detail.append(el('p','预告截止 / 自动触发：'+bjt(event.triggerAt)+' 北京时间 · 不等于原帖宣布时间','plan-time-note'));
+  for(const reply of event.followUps||[])if(reply.url&&!shown.has(reply.url)){shown.add(reply.url);const row=el('p');row.append(el('span',`Tibo 本人补充回复 · ${bjt(reply.at)} 北京时间 · `),source(reply.url,(reply.excerpt||'查看回复')+' ↗'));detail.append(row);}
+ }
+ for(const event of d.events||[])if(event.kind==='timed')detail.append(el('p','按官方预告触发：'+bjt(event.at)+' 北京时间；未检测个人额度，不是官方完成确认。','plan-time-note'));
  for(const event of d.events||[]){if(!event.url||shown.has(event.url))continue;shown.add(event.url);const row=el('p');row.append(el('span',(event.topic==='feature'?'功能更新':event.kind==='observed'?'社区观测':event.kind==='confirmed'?'官方确认':'预告 / 重置卡')+' · '+bjt(event.at)+' 北京时间 · '));row.append(source(event.url,event.title+' ↗'));detail.append(row);}
  $('#plan-excerpt').textContent=plan.announcementExcerpt;
  $('#plan-source').href=plan.announcementUrl;

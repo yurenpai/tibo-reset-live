@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {buildPlan} from '../src/plan.js';
 import {Store} from '../src/store.js';
 import {DesktopNotifications} from '../src/desktop.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 const doc={plan:{start:'2026-10-05',days:28,timeZone:'America/Los_Angeles'},entries:[]};
 const now=Date.parse('2026-10-07T22:00:00Z');
 const parent={id:'p',topic:'reset',kind:'scheduled',at:'2026-10-05T20:00:00Z'};
@@ -42,4 +45,20 @@ test('R2: disabled preferences and expired pending events are not retried',async
  clock+=30000;await desktop.retryPending();assert.equal(calls,1);
  desktop.event({...event,id:'expired'});await desktop.chain;assert.equal(calls,2);
  clock+=6*3600000;await desktop.retryPending();assert.equal(calls,2);store.close();
+});
+test('R2: 磁盘数据库关闭重开后恢复待发队列与成功去重',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'tibo-retry-disk-')),file=path.join(dir,'test.sqlite');
+ let store=new Store(file),calls=0,clock=now;
+ try{
+  let desktop=new DesktopNotifications(store,{now:()=>clock,send:async()=>{calls++;throw Error('temporary');}});
+  desktop.save({enabled:true});
+  const event={id:'disk',topic:'reset',kind:'confirmed',at:new Date(now-1000).toISOString(),title:'reset'};
+  desktop.event(event);await desktop.chain;await desktop.stop();store.close();
+  clock+=30000;store=new Store(file);
+  desktop=new DesktopNotifications(store,{now:()=>clock,send:async()=>{calls++;}});
+  await desktop.retryPending();assert.equal(calls,2);assert.equal(store.desktopJobs().length,0);assert.ok(store.get('desktopSent:disk'));
+  await desktop.stop();store.close();store=new Store(file);
+  desktop=new DesktopNotifications(store,{now:()=>clock,send:async()=>{calls++;}});
+  desktop.event(event);await desktop.chain;assert.equal(calls,2);await desktop.stop();
+ }finally{store.close();fs.rmSync(dir,{recursive:true,force:true});}
 });

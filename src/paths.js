@@ -9,12 +9,29 @@ import {randomUUID} from 'node:crypto';
 // 云端/Docker 默认仍使用项目下的 data/，也可通过 TIBO_DATA_DIR 覆盖。
 export const projectRoot=fileURLToPath(new URL('../',import.meta.url));
 
-export function localDataDir({env=process.env,platform=process.platform,home=os.homedir()}={}){
-  if(env.TIBO_DATA_DIR)return path.resolve(projectRoot,env.TIBO_DATA_DIR);
+export function localDataDir({env=process.env,platform=process.platform,home=os.homedir(),root=projectRoot}={}){
+  if(env.TIBO_DATA_DIR)return path.resolve(root,env.TIBO_DATA_DIR);
+  const remembered=path.join(root,'.runtime','autostart-data-dir.json');
+  if(fs.existsSync(remembered)){
+    const saved=JSON.parse(fs.readFileSync(remembered,'utf8'));
+    if(saved.root!==path.resolve(root)||typeof saved.dataDir!=='string'||!path.isAbsolute(saved.dataDir))throw Error('自启数据目录记录无效，原文件已保留');
+    return saved.dataDir;
+  }
   const p=platform==='win32'?path.win32:path.posix;
   if(platform==='win32')return p.join(env.LOCALAPPDATA||p.join(home,'AppData','Local'),'TiboResetLive');
   if(platform==='darwin')return p.join(home,'Library','Application Support','TiboResetLive');
   return p.join(env.XDG_DATA_HOME||p.join(home,'.local','share'),'tibo-reset-live');
+}
+
+// 仅记住数据目录，不复制 Token 等终端环境；普通启动、查询和停止共用此回退路径。
+export function rememberLocalDataDir(options={}){
+  const root=path.resolve(options.root||projectRoot),dataDir=localDataDir({...options,root});
+  if(/[\r\n\0]/.test(dataDir))throw Error('数据目录不能包含换行或空字符');
+  const file=path.join(root,'.runtime','autostart-data-dir.json'),temp=file+'.'+randomUUID()+'.tmp';
+  fs.mkdirSync(path.dirname(file),{recursive:true});
+  try{fs.writeFileSync(temp,JSON.stringify({root,dataDir})+'\n',{flag:'wx',mode:0o600});fs.renameSync(temp,file);}
+  finally{fs.rmSync(temp,{force:true});}
+  return dataDir;
 }
 
 export function dataDirFor(env=process.env){

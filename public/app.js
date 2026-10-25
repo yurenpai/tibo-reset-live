@@ -27,7 +27,7 @@ function renderAppearance(){
  const lines=state.pending?['重置已宣布，','等它落地。']:state.timedOnly&&full?['时间已到，','额度复活！']:full?['赞美 Tibo，','额度复活！']:soft?['观测到账，','也要庆祝！']:['等一个重置，','盼一场狂欢。'];
  $('#festival-title').append(lines[0],document.createElement('br'),lines[1]);
  $('#festival-kicker').textContent=state.pending?'RESET ANNOUNCED · 已宣布，持续跟进':full?(state.timedOnly?'RESET FESTIVAL · 按官方预告时间触发':'RESET FESTIVAL · 官方确认狂欢'):soft?'RESET FESTIVAL · 社区观测到账':'THE WAITING ROOM · 等待下一次重置';
- $('#festival-description').textContent=state.pending?(state.announcement.triggerAt?'Tibo 已宣布下一次重置，到公布的截止时间会自动触发日历、狂欢与提醒，不要求再发布 Done。':'Tibo 已宣布下一次重置，尚未收录明确截止时间；预告继续保留。'):full?(state.timedOnly?'已到 Tibo 官方公布的重置时间，日历按预告自动触发。金币、光晕和彩屑已就位，人物从触发时刻恢复清晰。':'Tibo 已官方确认重置。金币、光晕和彩屑已经就位，今天值得最高画质。'):soft?'社区记录已观测到重置到账，金色和彩屑照常庆祝！证据来自社区观测，不冒充 Tibo 的官方完成确认。':'有重置的日子，值得庆祝。没有重置的日子，就看 Tibo 逐渐变成简笔画。';
+ $('#festival-description').textContent=state.pending?(state.announcement.triggerAt?'Tibo 已宣布下一次重置，到公布的截止时间会自动触发日历、狂欢与提醒，不要求再发布 Done。':'Tibo 已宣布下一次重置，尚未收录明确截止时间；预告继续保留。'):full?(state.timedOnly?'已到 Tibo 官方公布的重置时间，日历按预告自动触发。未检查个人账号额度；这是预告时间触发，不是官方完成确认。金币、光晕和彩屑已就位，人物从触发时刻恢复清晰。':'Tibo 已官方确认重置。金币、光晕和彩屑已经就位，今天值得最高画质。'):soft?'社区记录已观测到重置到账，金色和彩屑照常庆祝！证据来自社区观测，不冒充 Tibo 的官方完成确认。':'有重置的日子，值得庆祝。没有重置的日子，就看 Tibo 逐渐变成简笔画。';
  $('#festival-status').textContent=state.preview?'正在预览外观 · 不代表真实重置':state.pending?'宣布于 '+bjt.format(new Date(state.announcement.at))+'（北京时间）':state.last?(state.timedOnly?'按预告触发：':state.last.kind==='observed'?'上次观测到账：':'上次官方确认：')+bjt.format(new Date(state.last.at))+'（北京时间）':'尚无可用于计算的重置记录';
  const announcementPanel=$('#announcement-detail');announcementPanel.replaceChildren();announcementPanel.hidden=!state.pending;
  if(state.pending){
@@ -82,10 +82,12 @@ function render(){
  if(!events.length){const p=document.createElement('p');p.className='placeholder';p.textContent='这一天尚未收录当前筛选下的动态。空白不代表当天没有重置或更新。';$('#detail').append(p);}
  for(const e of events){const item=document.createElement('article');item.className='record';
   const h=document.createElement('h3');h.className=e.kind;h.textContent=e.title;
-  const time=document.createElement('time');time.textContent=(e.kind==='timed'?'按预告触发：':'')+bjt.format(new Date(e.at))+' · 北京时间 / '+timeInZone(e.at,'America/Los_Angeles')+' PT';
+  const time=document.createElement('time');time.textContent=(e.kind==='timed'?'按预告触发：':e.kind==='scheduled'?'原帖宣布：':'')+bjt.format(new Date(e.at))+' · 北京时间 / '+timeInZone(e.at,'America/Los_Angeles')+' PT';
   const p=document.createElement('p');p.textContent=e.note;
   const text=document.createElement('p');text.className='excerpt';text.textContent=e.excerpt||'';text.hidden=!e.excerpt;
   item.append(h,time,p,text);
+  if(e.kind==='timed'){const basis=document.createElement('p');basis.className='via-source';basis.textContent='触发依据：官方预告截止时间已到；本工具未检查个人账号额度，不等于收到官方完成确认。';item.append(basis);}
+  if(e.kind==='scheduled'&&e.triggerAt){const trigger=document.createElement('p');trigger.textContent='预告截止 / 自动触发：'+bjt.format(new Date(e.triggerAt))+' 北京时间；上面的原帖宣布时间不是到账时间。';item.append(trigger);}
   if(e.announcementAt){const announced=document.createElement('p');announced.textContent='原帖宣布：'+bjt.format(new Date(e.announcementAt))+' 北京时间';item.append(announced);}
   if(e.via){const via=document.createElement('p');via.className='via-source';via.textContent=e.via.type==='community-feed'?'社区来源报告，未经本项目独立核验。':'公共镜像收录，原文未经本项目独立核验。';const a=document.createElement('a');a.href=e.via.url;a.textContent='查看收录源 ↗';a.target='_blank';a.rel='noopener noreferrer';via.append(a);item.append(via);}
   if(e.windowStart&&e.windowEnd){

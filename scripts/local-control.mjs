@@ -3,7 +3,7 @@ import net from 'node:net';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {localDataDir,migrateLegacyData,projectRoot} from '../src/paths.js';
+import {localDataDir,rememberLocalDataDir,migrateLegacyData,projectRoot} from '../src/paths.js';
 
 try{process.loadEnvFile(path.join(projectRoot,'.env'));}catch(error){if(error.code!=='ENOENT')throw error;}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -144,7 +144,9 @@ export async function status(){
 
 async function main(){
   const [command='start',...args]=process.argv.slice(2);
-  if(command==='start')await start({browser:!args.includes('--no-browser')});
+  if(command==='data-dir')console.log(dataDir);
+  else if(command==='remember-data-dir')console.log(rememberLocalDataDir());
+  else if(command==='start')await start({browser:!args.includes('--no-browser')});
   else if(command==='stop')await stop();
   else if(command==='status')await status();
   else if(command==='open'){
