@@ -19,7 +19,7 @@ $ledgerPath = Join-Path $dataDir 'local-instance.json'
 $legacyLedgerPath = Join-Path $projectRoot 'data\local-instance.json'
 $servicePath = Join-Path $dataDir 'local-service.json'
 $defaultDir = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'TiboResetLive' } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData\Local\TiboResetLive' }
-# 显式选择的新目录或仍有守护记录时，不退回另一目录的旧实例。
+# Do not fall back to a legacy instance when a custom directory was selected.
 if (-not (Test-Path -LiteralPath $ledgerPath) -and -not (Test-Path -LiteralPath $servicePath) -and $dataDir -eq $defaultDir -and $legacyLedgerPath -ne $ledgerPath -and (Test-Path -LiteralPath $legacyLedgerPath)) {
     $ledgerPath = $legacyLedgerPath
     $dataDir = Split-Path $legacyLedgerPath

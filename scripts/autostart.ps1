@@ -17,7 +17,7 @@ if ($Disable) {
         $existing = $shell.CreateShortcut($shortcutPath)
         if (-not $existing.Arguments.Contains($launcher)) { throw 'A different copy already owns the shortcut. Disable it there first.' }
     }
-    # 只持久化解析后的数据目录；登录后不依赖临时终端变量，也不复制凭证。
+    # Persist only the resolved data directory; never copy credentials.
     $candidates = @()
     $systemNode = Get-Command node.exe -ErrorAction SilentlyContinue
     if ($systemNode) { $candidates += $systemNode.Source }

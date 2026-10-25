@@ -67,7 +67,12 @@ export class SourceConfig {
       fs.mkdirSync(path.dirname(this.file),{recursive:true});
       fs.writeFileSync(temporary,JSON.stringify(config,null,2)+'\n',{mode:0o600,flag:'wx'});
       fs.renameSync(temporary,this.file);
-    }catch{fs.rmSync(temporary,{force:true});throw Error('无法保存本机来源配置，原配置继续生效');}
+    }catch{
+      // 临时路径的父级本身可能是文件；此时清理也会抛出 ENOTDIR。
+      // 清理失败不能覆盖面向用户的保存错误，且正式配置仍保持不变。
+      try{fs.rmSync(temporary,{force:true});}catch{}
+      throw Error('无法保存本机来源配置，原配置继续生效');
+    }
     this.monitor.stop();this.observations.stop();this.generation=generation;
     this.config=config;Object.assign(this,pair);
     if(this.running)this.begin();

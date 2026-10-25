@@ -25,9 +25,7 @@ test('R3: 自启记住绝对目录，重开终端后启动、查询和停止仍�
   assert.deepEqual(Object.keys(stored).sort(),['dataDir','root']);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
-test('R5: Windows 停止先解析 .env 的新目录，不走旧账本分支',{skip:process.platform!=='win32'},t=>{
- const policy=execFileSync('powershell.exe',['-NoProfile','-Command','Get-ExecutionPolicy'],{encoding:'utf8'}).trim();
- if(policy==='Restricted'||policy==='AllSigned'){t.skip('系统执行策略不允许运行临时脚本；不修改策略');return;}
+test('R5: Windows 停止先解析 .env 的新目录，不走旧账本分支',{skip:process.platform!=='win32'},()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'tibo-stop-path-'));
  try{
   fs.mkdirSync(path.join(root,'scripts'));fs.mkdirSync(path.join(root,'src'));
@@ -38,7 +36,7 @@ test('R5: Windows 停止先解析 .env 的新目录，不走旧账本分支',{sk
   const legacy=path.join(root,'data','local-instance.json');
   fs.writeFileSync(legacy,JSON.stringify({pid:process.pid,root,startedTicks:'1',nodePath:process.execPath}));
   const env={...process.env,PATH:path.dirname(process.execPath)+';'+process.env.PATH};delete env.TIBO_DATA_DIR;
-  execFileSync('powershell.exe',['-NoProfile','-File',path.join(root,'scripts','stop-local.ps1')],{env,encoding:'utf8',timeout:20000});
+  execFileSync('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',path.join(root,'scripts','stop-local.ps1')],{env,encoding:'utf8',timeout:20000});
   assert.equal(fs.existsSync(path.join(target,'local-instance.json')),false);
   assert.equal(fs.existsSync(legacy),true);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
