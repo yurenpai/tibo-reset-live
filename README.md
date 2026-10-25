@@ -1,5 +1,7 @@
 # Tibo Reset Live · OpenAI Codex 额度重置追踪器
 
+Tibo Reset Live 是一个可在用户自己电脑运行的 OpenAI Codex 额度重置追踪器。它提供中文重置日历、Tibo 28 天计划、Windows、macOS 和 Linux 桌面提醒、重置狂欢页面和人物等待状态，无需登录 X，也不要求仓库作者提供公共服务器。
+
 > No-login OpenAI Codex usage-limit reset tracker and Tibo 28-day plan calendar, with Windows, macOS and Linux desktop notifications.
 
 下载代码后用对应系统的启动文件，在自己的电脑运行中文重置月历、28 天计划、金色狂欢和人物五阶段。默认从公共 JSON 源定时收录 Tibo 的原帖与回复，无需 X 账号、Cookies、API Token、Telegram 或云服务器。提醒使用本机系统通知，关闭网页后由后台进程继续检查。
